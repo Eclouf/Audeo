@@ -16,6 +16,8 @@ long_description = """More details about the app should go here.
 icon = "src/audeo/resources/audeo"
 sources = [
     "src/audeo",
+    "src/yt-dlp",
+    "src/spotDL"
 ]
 test_sources = [
     "tests",

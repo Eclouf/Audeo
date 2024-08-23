@@ -1,0 +1,11 @@
+Metadata-Version: 2.1
+Briefcase-Version: 0.3.17
+Name: audeo
+Formal-Name: Audeo
+App-ID: com.eclouf.audeo.audeo
+Version: 0.0.1
+Home-page: https://github.com/Eclouf/Audeo
+Download-URL: https://github.com/Eclouf/Audeo
+Author: Eclouf
+Author-email: eclouf@gmail.com
+Summary: Audeo is a GUI for downloading video and music from the Internet. It uses yt-dlp, ffmpeg, spotDL...
