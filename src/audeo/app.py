@@ -1,3 +1,4 @@
+# -*- encoding:utf-8 -*-
 """
 Audeo is a GUI for downloading video and music from the Internet. It uses yt-dlp, ffmpeg, spotDL...
 """
@@ -8,7 +9,6 @@ from toga.style.pack import COLUMN, ROW
 import os 
 from toga import ImageView
 from toga.style.pack import CENTER
-import yt_dlp
 import threading
 from threading import Thread
 from queue import Queue
@@ -37,6 +37,38 @@ class Audeo(toga.App):
         # Ajouter la commande au bouton
         self.launch_button = toga.Button('Lancer', on_press=self.launch_command.action, enabled=False)
 
+        self.pytube = toga.Box(style=Pack(flex=1))
+        self.spotDL = toga.Box(style=Pack(flex=1))
+        self.univer = toga.Box(style=Pack(flex=1))
+        
+        self.source = toga.OptionContainer(
+            content=[
+                toga.OptionItem("Youtube", self.pytube),
+                toga.OptionItem("Spotify", self.spotDL),
+                toga.OptionItem("All", self.univer)
+            ],
+            style=Pack(flex=1,direction=COLUMN, alignment=CENTER),
+            
+        )
+        
+        main_box.add(self.source)
+        ### self.pytube ################################################################################
+        self.pytube_rigth = toga.Box()
+        self.pytube_left = toga.Box(style=Pack(background_color = '#E3E3E3'))
+        self.pytube_pict = toga.ImageView(image='./resources/pytube90.png', style=Pack(background_color = '#E3E3E3',padding=(0, 5)))
+        
+        self.pytube_left.add(self.pytube_pict)
+        self.pytube.add(self.pytube_left, self.pytube_rigth)
+        
+        ### self.spotDL ################################################################################
+        self.spotDL_rigth = toga.Box()
+        self.spotDL_left = toga.Box(style=Pack(background_color = '#2AC341'))
+        self.spotDL_pict = toga.ImageView(image='./resources/spotdl90.png', style=Pack(background_color = '#2AC341',padding=(0, 5)))
+        
+        self.spotDL_left.add(self.spotDL_pict)
+        self.spotDL.add(self.spotDL_left)
+        
+        ### Self.univer ################################################################################
         # Création des options avec un switch pour chaque option
         self.play_list = toga.Switch('Liste de lecture', value=False)
         self.thumbnail = toga.Switch('Miniature', value=False)
@@ -45,7 +77,20 @@ class Audeo(toga.App):
         self.sub_title = toga.Switch('Sous-titre', value=False)
         self.chapter = toga.Switch('Chapitre', value=False)
         print(self.play_list.value)
-        
+        # Création de deux colonnes pour les switches d'options
+        column1 = toga.Box(style=Pack(direction=COLUMN))
+        column2 = toga.Box(style=Pack(direction=COLUMN))
+
+        column1.add(self.thumbnail, self.play_list, self.best_ext)
+        column2.add(self.meta, self.sub_title, self.chapter)
+
+        # Création d'une ligne pour les colonnes
+        columns_row = toga.Box(style=Pack(direction=ROW))
+        columns_row.add(column1)
+        columns_row.add(column2)
+
+        # Ajout des colonnes au layout univer
+        self.univer.add(columns_row)
         
         # Définir le dossier de téléchargements par défaut
         self.folder = os.path.expanduser('~/Downloads')
@@ -61,23 +106,8 @@ class Audeo(toga.App):
         # Ajout du titre et de la ligne au layout principal
         main_box.add(row)
 
-        # Création de deux colonnes pour les switches d'options
-        column1 = toga.Box(style=Pack(direction=COLUMN))
-        column2 = toga.Box(style=Pack(direction=COLUMN))
-
-        column1.add(self.thumbnail, self.play_list, self.best_ext)
-        column2.add(self.meta, self.sub_title, self.chapter)
-
-        # Création d'une ligne pour les colonnes
-        columns_row = toga.Box(style=Pack(direction=ROW))
-        columns_row.add(column1)
-        columns_row.add(column2)
-
-        # Ajout des colonnes au layout principal
-        main_box.add(columns_row)
-
         #contenaire pour les téléchargement:
-        self.box = toga.Box(style=Pack(direction=COLUMN, alignment=CENTER))  # Créez une boîte pour contenir vos widgets
+        self.box = toga.Box(style=Pack(direction=COLUMN, alignment=CENTER))  
         self.scroll = toga.ScrollContainer(content=self.box, style=Pack(direction=COLUMN, alignment=CENTER, flex=1))  # Ajoutez la boîte à ScrollContainer
         main_box.add(self.scroll)
         
