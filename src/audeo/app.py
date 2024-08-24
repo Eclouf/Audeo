@@ -19,13 +19,16 @@ import time
 class Audeo(toga.App):
     def startup(self):
         # Création du layout principal avec alignement horizontal centré
-        main_box = toga.Box(style=Pack(direction=COLUMN, alignment=CENTER))
-
+        main_box = toga.Box()
+        self.left = toga.Box(style=Pack(width=10))
+        self.center = toga.Box(style=Pack(direction=COLUMN, alignment=CENTER, flex=1))
+        self.right = toga.Box(style=Pack(width=10))
+        main_box.add(self.left, self.center, self.right)
         # Création de l'image
         title_image = toga.ImageView(image='./resources/audeo.png', style=Pack(padding=(0, 5)))
 
         # Ajout de l'image au layout principal
-        main_box.add(title_image)
+        self.center.add(title_image)
 
         # Création des widgets
         
@@ -51,10 +54,10 @@ class Audeo(toga.App):
             
         )
         
-        main_box.add(self.source)
+        self.center.add(self.source)
         ### self.pytube ################################################################################
         self.pytube_rigth = toga.Box()
-        self.pytube_left = toga.Box(style=Pack(background_color = '#E3E3E3'))
+        self.pytube_left = toga.Box(style=Pack(alignment=CENTER, background_color = '#E3E3E3'))
         self.pytube_pict = toga.ImageView(image='./resources/pytube90.png', style=Pack(background_color = '#E3E3E3',padding=(0, 5)))
         
         self.pytube_left.add(self.pytube_pict)
@@ -62,7 +65,7 @@ class Audeo(toga.App):
         
         ### self.spotDL ################################################################################
         self.spotDL_rigth = toga.Box()
-        self.spotDL_left = toga.Box(style=Pack(background_color = '#2AC341'))
+        self.spotDL_left = toga.Box(style=Pack(alignment=CENTER, background_color = '#2AC341'))
         self.spotDL_pict = toga.ImageView(image='./resources/spotdl90.png', style=Pack(background_color = '#2AC341',padding=(0, 5)))
         
         self.spotDL_left.add(self.spotDL_pict)
@@ -104,12 +107,12 @@ class Audeo(toga.App):
         row.add(self.launch_button)
 
         # Ajout du titre et de la ligne au layout principal
-        main_box.add(row)
+        self.center.add(row)
 
         #contenaire pour les téléchargement:
         self.box = toga.Box(style=Pack(direction=COLUMN, alignment=CENTER))  
         self.scroll = toga.ScrollContainer(content=self.box, style=Pack(direction=COLUMN, alignment=CENTER, flex=1))  # Ajoutez la boîte à ScrollContainer
-        main_box.add(self.scroll)
+        self.center.add(self.scroll)
         
         # Création de la fenêtre principale
         self.main_window = toga.MainWindow(title=self.formal_name)
