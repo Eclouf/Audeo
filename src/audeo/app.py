@@ -56,10 +56,26 @@ class Audeo(toga.App):
         
         self.center.add(self.source)
         ### self.pytube ################################################################################
-        self.pytube_rigth = toga.Box()
+        self.pytube_rigth = toga.Box(style=Pack(alignment=CENTER, flex=1))
         self.pytube_left = toga.Box(style=Pack(alignment=CENTER, background_color = '#E3E3E3'))
         self.pytube_pict = toga.ImageView(image='./resources/pytube90.png', style=Pack(background_color = '#E3E3E3',padding=(0, 5)))
         
+        self.pytube_audio = toga.Switch('Audio', value=False)
+        self.pytube_video = toga.Switch('Video', value=False)
+        self.pytube_play_list = toga.Switch('Liste de lecture', value=False)
+        self.pytube_thumbnail = toga.Switch('Miniature', value=False)
+        self.pytube_best_ext = toga.Switch('Meilleure extention', value=False)
+        self.pytube_meta = toga.Switch('Ajouter les métadonnées', value=False)
+        self.pytube_sub_title = toga.Switch('Sous-titre', value=False)
+        self.pytube_chapter = toga.Switch('Chapitre', value=False)
+        pytube_column1 = toga.Box(style=Pack(direction=COLUMN))
+        pytube_column2 = toga.Box(style=Pack(direction=COLUMN))
+        pytube_column1.add(self.pytube_audio, self.pytube_thumbnail, self.pytube_play_list, self.pytube_best_ext)
+        pytube_column2.add(self.pytube_video,self.pytube_meta, self.pytube_sub_title, self.pytube_chapter)
+        pytube_columns_row = toga.Box(style=Pack(direction=ROW))
+        pytube_columns_row.add(pytube_column1)
+        pytube_columns_row.add(pytube_column2)
+        self.pytube_rigth.add(pytube_columns_row)
         self.pytube_left.add(self.pytube_pict)
         self.pytube.add(self.pytube_left, self.pytube_rigth)
         
