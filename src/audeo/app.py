@@ -95,20 +95,13 @@ class Audeo(toga.App):
         self.meta = toga.Switch('Ajouter les métadonnées', value=False)
         self.sub_title = toga.Switch('Sous-titre', value=False)
         self.chapter = toga.Switch('Chapitre', value=False)
-        print(self.play_list.value)
-        # Création de deux colonnes pour les switches d'options
         column1 = toga.Box(style=Pack(direction=COLUMN))
         column2 = toga.Box(style=Pack(direction=COLUMN))
-
         column1.add(self.thumbnail, self.play_list, self.best_ext)
         column2.add(self.meta, self.sub_title, self.chapter)
-
-        # Création d'une ligne pour les colonnes
         columns_row = toga.Box(style=Pack(direction=ROW))
         columns_row.add(column1)
         columns_row.add(column2)
-
-        # Ajout des colonnes au layout univer
         self.univer.add(columns_row)
         
         # Définir le dossier de téléchargements par défaut

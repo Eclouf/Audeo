@@ -17,7 +17,8 @@ icon = "src/audeo/resources/audeo"
 sources = [
     "src/audeo",
     "src/yt-dlp",
-    "src/spotDL"
+    "src/spotDL",
+    "src/pytube"
 ]
 test_sources = [
     "tests",
