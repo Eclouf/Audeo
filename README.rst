@@ -5,7 +5,7 @@ Audeo
 `The BeeWare Project`_. **If you want to see more tools like Briefcase, please
 consider** `becoming a financial member of BeeWare`_.
 
-Audeo is a GUI for downloading video and music from the Internet. It uses yt-dlp, ffmpeg, spotDL...
+App download video
 
 .. _`Briefcase`: https://briefcase.readthedocs.io/
 .. _`The BeeWare Project`: https://beeware.org/

@@ -4,8 +4,8 @@ Name: audeo
 Formal-Name: Audeo
 App-ID: com.eclouf.audeo.audeo
 Version: 0.0.1
-Home-page: https://github.com/Eclouf/Audeo
-Download-URL: https://github.com/Eclouf/Audeo
+Home-page: https://audeo.eclouf.com/audeo
+Download-URL: https://audeo.eclouf.com/audeo
 Author: Eclouf
 Author-email: eclouf@gmail.com
-Summary: Audeo is a GUI for downloading video and music from the Internet. It uses yt-dlp, ffmpeg, spotDL...
+Summary: App download video

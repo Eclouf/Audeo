@@ -3,22 +3,21 @@
 project_name = "Audeo"
 bundle = "com.eclouf.audeo"
 version = "0.0.1"
-url = "https://github.com/Eclouf/Audeo"
+url = "https://audeo.eclouf.com/audeo"
 license = "Other"
 author = "Eclouf"
 author_email = "eclouf@gmail.com"
 
 [tool.briefcase.app.audeo]
 formal_name = "Audeo"
-description = "Audeo is a GUI for downloading video and music from the Internet. It uses yt-dlp, ffmpeg, spotDL..."
+description = "App download video"
 long_description = """More details about the app should go here.
 """
 icon = "src/audeo/resources/audeo"
 sources = [
     "src/audeo",
-    "src/yt-dlp",
-    "src/spotDL",
-    "src/pytube"
+    "src/audeo/settings",
+    "src/audeo/ytdlp",
 ]
 test_sources = [
     "tests",
