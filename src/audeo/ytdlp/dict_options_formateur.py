@@ -1,9 +1,11 @@
 
 class Formateur:
-    def __init__(self, options):
-        self.options = options
+    def __init__(self ):
+        pass
 
     def formater(self, options: dict):
+        
+        options = dict(options)
         yt_dlp_options = {}
         yt_dlp_postprocessors = {}
         
@@ -119,6 +121,7 @@ class Formateur:
                         'preferedformat': value
                     })
         yt_dlp_options.update({'postprocessors': yt_dlp_postprocessors})
+        print(yt_dlp_options)
         return yt_dlp_options
 
 
@@ -250,4 +253,4 @@ yt_dlp_options = {
     
 }
 
-print(yt_dlp_options)
+#print(yt_dlp_options)
