@@ -63,10 +63,11 @@ class Audeo(toga.App):
         
         ico_1_box.add(ico)
         ico_2_box.add(title, self.url_input, self.select_box)
-        self.dow_box = toga.Box(style=Pack(direction=COLUMN, alignment=CENTER))  # Initialiser dow_box
+        self.dow_box = toga.Box(style=Pack(direction=COLUMN, alignment=CENTER,  background_color='#D3D3D3', flex=1))
+        self.dow_scrol = toga.ScrollContainer(style=Pack(direction=COLUMN, alignment=CENTER, flex=1 ), content=self.dow_box)  # Initialiser dow_box
         
         ico_box.add(ico_1_box, ico_2_box)
-        c_c_box.add(ico_box, self.dow_box)
+        c_c_box.add(ico_box, self.dow_scrol)
         c_box.add(c_b_box, c_c_box, c_t_box)
         self.main_box.add(l_box, c_box, r_box)
         
@@ -96,6 +97,7 @@ class Audeo(toga.App):
         folder = await toga.Window.dialog(self, dialog)
         
         if folder:
+            self.options['paths']['home'] = folder
             print(f"Selected folder: {folder} ")
         else:
             print("No folder selected")
@@ -109,14 +111,36 @@ class Audeo(toga.App):
             progress.value = 100
             progress_label.text = "Download complete"
         
+    def update_file_info(self, file_info, file_name, file_size, file_index, dow_pic):
+        # Mettre à jour l'interface utilisateur avec les informations du fichier
+        file_name.text = file_info['filename'][0:30]+('...' if len(file_info['filename']) > 30 else '')
+        file_size.text = file_info['filesize']
+        file_index.text = str(file_info['index']) + '/' + str(file_info['total_entries'])
+        if 'thumbnail_path' in file_info:
+            print(file_info['thumbnail_path'])
+            dow_pic.image = str(file_info['thumbnail_path']).replace('\\', '/')
+        
+        
         
     def create_progress_widgets(self):
-        progress_box = toga.Box(style=Pack(direction=ROW, alignment=CENTER, flex=1))
+        dow_pic = toga.ImageView(image='./resources/audeo.png', style=Pack(height=90, width=90, padding=(0, 5)))
+        
+        progress_box = toga.Box(style=Pack(direction=COLUMN, alignment=CENTER, flex=1))
         progress = toga.ProgressBar(max=100,style=Pack(flex=1), value=0)
         progress_label = toga.Label('0%', style=Pack(padding_left=5))
-        progress_box.add(progress, progress_label)
-        self.dow_box.add(progress_box)
-        return progress_box, progress, progress_label
+        
+        file_box = toga.Box(style=Pack(direction=COLUMN, alignment=CENTER))
+        widget_progress = toga.Box(style=Pack(direction=ROW, alignment=CENTER))
+        file_name = toga.Label('File Name', style=Pack(font_weight='bold', font_size=12, padding_left=5))
+        file_size = toga.Label('File Size', style=Pack(padding_left=5))
+        file_index = toga.Label('File Index', style=Pack(padding_left=5))
+        
+        file_box.add(file_name, file_size, file_index)
+        progress_box.add(file_box, progress_label, progress, )
+        widget_progress.add(dow_pic, progress_box)
+        self.dow_box.add(widget_progress)
+        
+        return progress_box, progress, progress_label, file_name, file_size, file_index, dow_pic
     
     @staticmethod
     def is_valid_url(url):

@@ -33,6 +33,14 @@ class Formateur:
                         'add_chapters': chapters,  # Ajouter des chapitres au fichier
                         'add_sponsorblock_chapters': sponsorblock,  # Ajouter des chapitres SponsorBlock
                     })
+                    
+                if key == 'MetadataParser':
+                    yt_dlp_postprocessors.append({
+                        'key': key,
+                        'when': 'pre_process',  # Quand exécuter le postprocesseur
+                        'actions': value,  # Actions à effectuer [(MetadataParserPP.Actions.INTERPRET, 'playlist_index', r'(?s)(?P<track_number>.+)')]},
+                    })
+                    
                 if key == 'FFmpegEmbedSubtitle':
                     # Traiter FFmpegEmbedSubtitle avec booléen already_have_subtitle
                     subtitle = value
