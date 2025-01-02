@@ -29,6 +29,11 @@ test_requires = [
     "pytest",
 ]
 
+# Include ffmpeg binaries
+resources = [
+    "src/audeo/resources/ffmpeg",
+]
+
 [tool.briefcase.app.audeo.macOS]
 universal_build = true
 requires = [

@@ -397,3 +397,11 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+venv/
+src/audeo/resources/ffmpeg/linux-x64/
+src/audeo/resources/ffmpeg/linux-arm64/
+src/audeo/resources/ffmpeg/windows-x64/
+src/audeo/resources/ffmpeg/windows-arm64/
+src/audeo/resources/ffmpeg/macos-x64/
+src/audeo/resources/ffmpeg/macos-arm64/
