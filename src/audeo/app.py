@@ -76,13 +76,13 @@ class Audeo(toga.App):
         ico_2_box = toga.Box(style=Pack(direction=COLUMN, alignment=CENTER, flex=1))
         
         title = toga.Label("Audeo",style=Pack(alignment=CENTER,font_variant='small-caps', font_size=15, flex=1))
-        ico = toga.ImageView(image='./resources/audeo.png', style=Pack(padding=(0, 5)))
+        ico = toga.ImageView(image='./resources/audeo.png', style=Pack(height=80, width=80, padding=(0, 5)))
         self.url_input = toga.TextInput(style=Pack(flex=1), placeholder='Entrez une URL', on_change=self.on_url_input_change)
         
-        self.select_box = toga.Box(style=Pack(flex=1))
-        self.folder = toga.Button('Dossier', on_press=self.select_folder)
+        self.select_box = toga.Box(style=Pack(flex=1, padding_left=5))
+        self.folder = toga.Button('Dossier', on_press=self.select_folder, style=Pack(padding_top=5, padding_bottom=5, padding_left=5, padding_right=5))
         self.launch_command = toga.Command(self.launch_operation, 'Lancer', shortcut='l')
-        self.launch_button = toga.Button('Lancer', on_press=self.launch_command.action, enabled=False)
+        self.launch_button = toga.Button('Lancer', on_press=self.launch_command.action, enabled=False, style=Pack(padding_top=5, padding_bottom=5, padding_left=5, padding_right=5))
         
         self. select_box.add(self.folder, self.launch_button)
         
