@@ -4,11 +4,14 @@
 App download video
 """
 import toga
-import os 
+import os
+import platform
+from pathlib import Path
 import threading
 from toga.style import Pack
 from toga.style.pack import COLUMN, ROW, CENTER
 from ytdlp import downloader
+import sys
 
 class ProgressWidgets:
     def __init__(self):
@@ -50,9 +53,9 @@ class Audeo(toga.App):
         show the main window.
         """
         
-        self.ffmpeg = os.path.join(os.path.dirname(__file__), "resources", "ffmpeg.exe")
+        self.ffmpeg = self.setup_ffmpeg()
         self.options = {
-            'paths':                    {'home': '/downloads', 'temp': '/temp'},            # Dictionary of output paths.
+            'paths':                    {'home': '/downloads'},            # Dictionary of output paths.
             'outtmpl':                  {'default': '%(title)s.%(ext)s'},                   # Template for output names.
             'ffmpeg_location': self.ffmpeg,                                                # Location of the ffmpeg binary.
             #'outtmpl_na_placeholder':   'NA',                                               # Placeholder for unavailable meta fields.
@@ -85,7 +88,7 @@ class Audeo(toga.App):
         
         ico_1_box.add(ico)
         ico_2_box.add(title, self.url_input, self.select_box)
-        self.dow_box = toga.Box(style=Pack(direction=COLUMN, alignment=CENTER,  background_color='#D3D3D3',padding_left=5, flex=1))
+        self.dow_box = toga.Box(style=Pack(direction=COLUMN, alignment=CENTER, padding_left=5, flex=1))
         self.dow_scrol = toga.ScrollContainer(style=Pack(direction=COLUMN, alignment=CENTER, flex=1 ), content=self.dow_box)  # Initialiser dow_box
         
         ico_box.add(ico_1_box, ico_2_box)
@@ -97,6 +100,45 @@ class Audeo(toga.App):
         self.main_window.content = self.main_box
         self.main_window.show()
         print("Audeo instance initialized in startup:", Audeo.instance)
+        
+    def setup_ffmpeg(self):
+        """Configure ffmpeg according to the platform"""
+    
+        # Detect the architecture
+        machine = platform.machine().lower()
+        is_arm = 'arm' in machine or 'aarch64' in machine
+    
+        # Detect the operating system
+        if sys.platform.startswith('win'):
+            platform_name = 'windows'
+            ffmpeg_name = 'ffmpeg.exe'
+        elif sys.platform.startswith('darwin'):
+            platform_name = 'macos'
+            ffmpeg_name = 'ffmpeg'
+        else:
+            platform_name = 'linux'
+            ffmpeg_name = 'ffmpeg'
+        
+        # Construct the path to the binary
+        arch_suffix = '-arm64' if is_arm else '-x64'
+        binary_dir = Path(__file__).parent / 'resources' / 'ffmpeg' / f'{platform_name}{arch_suffix}'
+        ffmpeg_path = binary_dir / ffmpeg_name
+        
+        # Store the path for future use
+        self.ffmpeg_path = str(ffmpeg_path)
+        
+        # Check if the binary exists
+        if not ffmpeg_path.exists():
+            raise RuntimeError(f"FFmpeg binary not found for your platform ({platform_name}{arch_suffix})")
+        
+        # Make the binary executable on Unix
+        if platform_name in ('linux', 'macos'):
+            try:
+                os.chmod(ffmpeg_path, 0o755)
+            except Exception as e:
+                print(f"Warning: Could not set executable permissions on ffmpeg: {e}")
+                
+        return self.ffmpeg_path
         
     def create_progress_widgets(self):
         return ProgressWidgets()
@@ -118,11 +160,24 @@ class Audeo(toga.App):
     
     async def select_folder(self, widget):
         """Select the folder where the video will be downloaded"""
-        dialog = toga.SelectFolderDialog('Select a folder', initial_directory='~/Downloads')
-        folder = await toga.Window.dialog(self, dialog)
+        # Determine the initial directory based on the platform
+        if sys.platform.startswith('win'):
+            # On Windows, use Downloads folder
+            initial_dir = os.path.expanduser('~\\Downloads')
+        elif sys.platform.startswith('darwin'):
+            # On macOS, use Downloads folder
+            initial_dir = os.path.expanduser('~/Downloads')
+        else:
+            # On Linux, use Téléchargements or Downloads folder
+            downloads_fr = os.path.expanduser('~/Téléchargements')
+            downloads_en = os.path.expanduser('~/Downloads')
+            initial_dir = downloads_fr if os.path.exists(downloads_fr) else downloads_en
+
+        dialog = toga.SelectFolderDialog('Select a folder', initial_directory=initial_dir)
+        folder = await toga.Window.dialog(self.main_window, dialog)
         
         if folder:
-            self.options['paths']['home'] = folder
+            self.options['paths']['home'] = str(folder)
             print(f"Selected folder: {folder} ")
         else:
             print("No folder selected")
