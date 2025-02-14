@@ -18,7 +18,7 @@ class Formateur:
                 if key == 'FFmpegExtractAudio':
                     # Traiter FFmpegExtractAudio avec tuple (codec, qualité, nopostoverwrites)
                     codec, quality, nopostoverwrites = value
-                    yt_dlp_postprocessors.append({
+                    yt_dlp_postprocessors.update({
                         'key': key,
                         'preferredcodec': codec,
                         'preferredquality': quality,
@@ -27,7 +27,7 @@ class Formateur:
                 if key == 'FFmpegMetadata':
                     # Traiter FFmpegMetadata avec booléen add_metadata
                     metadata, chapters, sponsorblock = value
-                    yt_dlp_postprocessors.append({
+                    yt_dlp_postprocessors.update({
                         'key': key,
                         'add_metadata': metadata,  # Ajouter des métadonnées au fichier
                         'add_chapters': chapters,  # Ajouter des chapitres au fichier
@@ -35,7 +35,7 @@ class Formateur:
                     })
                     
                 if key == 'MetadataParser':
-                    yt_dlp_postprocessors.append({
+                    yt_dlp_postprocessors.update({
                         'key': key,
                         'when': 'pre_process',  # Quand exécuter le postprocesseur
                         'actions': value,  # Actions à effectuer [(MetadataParserPP.Actions.INTERPRET, 'playlist_index', r'(?s)(?P<track_number>.+)')]},
@@ -44,42 +44,42 @@ class Formateur:
                 if key == 'FFmpegEmbedSubtitle':
                     # Traiter FFmpegEmbedSubtitle avec booléen already_have_subtitle
                     subtitle = value
-                    yt_dlp_postprocessors.append({
+                    yt_dlp_postprocessors.update({
                         'key': key,
                         'already_have_subtitle': subtitle,  # Indicateur si les sous-titres sont déjà intégrés
                     })
                 if key == 'FFmpegMerger':
                     # Traiter FFmpegMerger avec booléen only_merge
                     merge = value
-                    yt_dlp_postprocessors.append({
+                    yt_dlp_postprocessors.update({
                         'key': key,
                         'only_merge': merge,  # Indicateur pour ne faire que la fusion
                     })
                 if key == 'FFmpegFixupM3u8':
                     # Traiter FFmpegFixupM3u8 avec chaîne fixup
                     fixup = value
-                    yt_dlp_postprocessors.append({
+                    yt_dlp_postprocessors.update({
                         'key': key,
                         'fixup': fixup,  # Choix de fixup (never, warn, detect_or_warn)
                     })
                 if key == 'FFmpegThumbnailsConvertor':
                     # Traiter FFmpegThumbnailsConvertor avec chaîne format
                     format = value
-                    yt_dlp_postprocessors.append({
+                    yt_dlp_postprocessors.update({
                         'key': key,
                         'format': format,  # Format de la miniature (ex: jpg, png)
                     })
                 if key == 'FFmpegEmbedThumbnail':
                     # Traiter FFmpegEmbedThumbnail avec booléen already_have_thumbnail
                     thumbnail = value
-                    yt_dlp_postprocessors.append({
+                    yt_dlp_postprocessors.update({
                         'key': key,
                         'already_have_thumbnail': thumbnail,  # Indique si la miniature est déjà intégrée
                     })
                 if key == 'FFmpegExtractFrames':
                     # Traiter FFmpegExtractFrames avec chaîne frames et output_dir
                     frames, output_dir = value
-                    yt_dlp_postprocessors.append({
+                    yt_dlp_postprocessors.update({
                         'key': key,
                         'frames': frames,  # Cadres à extraire
                         'output_dir': output_dir,  # Répertoire de sortie pour les images
@@ -87,28 +87,28 @@ class Formateur:
                 if key == 'SRTSubtitlesConvertor':
                     # Traiter SRTSubtitlesConvertor avec chaîne format
                     format = value
-                    yt_dlp_postprocessors.append({
+                    yt_dlp_postprocessors.update({
                         'key': key,
                         'format': format,  # Format des sous-titres (ex: srt, vtt)
                     })
                 if key == 'FFmpegChaptersConvertor':
                     # Traiter FFmpegChaptersConvertor avec chaîne chapters
                     chapters = value
-                    yt_dlp_postprocessors.append({
+                    yt_dlp_postprocessors.update({
                         'key': key,
                         'chapters': chapters,  # Fichier de chapitres à utiliser
                     })
                 if key == 'MetadataFromField':
                     # Traiter MetadataFromField avec chaîne field
                     field = value
-                    yt_dlp_postprocessors.append({
+                    yt_dlp_postprocessors.update({
                         'key': key,
                         'field': field,  # Champ à extraire (ex: title, uploader)
                     })
                 if key == 'FFmpegWatermark':
                     # Traiter FFmpegWatermark avec chaîne watermark et position
                     watermark, position = value
-                    yt_dlp_postprocessors.append({
+                    yt_dlp_postprocessors.update({
                         'key': key,
                         'watermark': watermark,  # Fichier de filigrane
                         'position': position,  # Position du filigrane (ex: top-right, bottom-left)
@@ -116,7 +116,7 @@ class Formateur:
                 if key == 'FFmpegTextOverlay':
                     # Traiter FFmpegTextOverlay avec chaîne text et position
                     text, position = value
-                    yt_dlp_postprocessors.append({
+                    yt_dlp_postprocessors.update({
                         'key': key,
                         'text': text,  # Texte à ajouter
                         'position': position,  # Position du texte (ex: top-right, bottom-left)
@@ -124,7 +124,7 @@ class Formateur:
                 
                 if key == 'FFmpegVideoConvertor':
                     # Traiter les autres postprocesseurs avec une seule valeur
-                    yt_dlp_postprocessors.append({
+                    yt_dlp_postprocessors.update({
                         'key': key,
                         'preferedformat': value
                     })

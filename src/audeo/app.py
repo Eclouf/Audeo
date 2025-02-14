@@ -10,7 +10,6 @@ import json
 import sys
 import threading
 import asyncio
-import queue
 from threading import Thread
 
 from pathlib import Path
@@ -19,34 +18,49 @@ from toga.style.pack import COLUMN, ROW, CENTER
 from ytdlp import downloader
 from ytdlp import tools
 
+if getattr(sys, 'frozen', False):
+    # Si le programme est exécuté en tant qu'exécutable
+    base_path = sys._MEIPASS  # Répertoire temporaire créé par PyInstaller
+else:
+    # Si le programme est exécuté en tant que script Python normal
+    base_path = os.path.dirname(__file__)
 
-class ProgressWidgets:
-    def __init__(self):
-        self.dow_pic = toga.ImageView(image='./resources/default.png', style=Pack(height=90, width=90, padding=(0, 5)))
+image_audeo_path = os.path.join(base_path, 'resources', 'audeo.png')
+image_default_path = os.path.join(base_path, 'resources', 'default.png')
+image_stop_path = os.path.join(base_path, 'resources', 'stop.png')
+image_close_path = os.path.join(base_path, 'resources', 'close.png')
+
+class ProgressWidgets():
+    """Classe pour les widgets de progression"""
+    
+    def __init__(self, id):
+        self.dow_pic = toga.ImageView(image=image_default_path, style=Pack(height=90, width=90, padding=(0, 5)))
         self.progress_box = toga.Box(style=Pack(direction=COLUMN, alignment=CENTER, flex=1))
         self.progress = toga.ProgressBar(max=100, style=Pack(flex=1), value=0)
         self.progress_label = toga.Label('0%', style=Pack(padding_left=5))
         self.file_box = toga.Box(style=Pack(direction=COLUMN, alignment=CENTER))
-        self.widget_progress = toga.Box(style=Pack(direction=ROW, alignment=CENTER))
+        self.widget_progress = toga.Box(style=Pack(direction=ROW, alignment=CENTER, padding_top=3, padding_bottom=3, padding_left=3, padding_right=3))
         self.file_name = toga.Label('File Name', style=Pack(font_weight='bold', font_size=12, padding_left=5))
         self.file_size = toga.Label('File Size', style=Pack(padding_left=5))
         self.file_index = toga.Label('File Index', style=Pack(padding_left=5))
         self.control_box = toga.Box(style=Pack(direction=COLUMN, alignment=CENTER, padding_top=5))
         # Boutons de controle
         self.stop_button = toga.Button(
-            icon=toga.Icon('./resources/stop.png'),
+            id=id,
+            icon=toga.Icon(image_stop_path),
             on_press=Audeo.instance.download_stopped,
             style=Pack(width=30, height=30)
         )
         self.remove_button = toga.Button(
-            'X',
+            icon=toga.Icon(image_close_path),
             on_press=Audeo.instance.remove_widget,
-            style=Pack(width=30, height=30, font_weight='bold')
+            style=Pack(width=30, height=30)
         )
         
         # Configuration initiale
-        self.control_box.add(self.stop_button)
         self.control_box.add(self.remove_button)
+        self.control_box.add(self.stop_button)
+        
         self.file_box.add(self.file_name, self.file_size, self.file_index)
         self.progress_box.add(self.file_box, self.progress_label, self.progress)
         self.widget_progress.add(self.dow_pic, self.progress_box, self.control_box)
@@ -63,6 +77,7 @@ class Audeo(toga.App):
         self.downloader = Downloader()
         self.tools = Tools()
         self.nub_parser = True
+        self.thread_nb = -1
 
     def load_saved_options(self):
         """Charge les options sauvegardées depuis le fichier de configuration"""
@@ -108,7 +123,7 @@ class Audeo(toga.App):
         ico_2_box = toga.Box(style=Pack(direction=COLUMN, alignment=CENTER, flex=1))
         
         title = toga.Label("Audeo",style=Pack(alignment=CENTER,font_variant='small-caps', font_size=15, flex=1))
-        ico = toga.ImageView(image='./resources/audeo.png', style=Pack(height=80, width=80, padding=(0, 5)))
+        ico = toga.ImageView(image=image_audeo_path, style=Pack(height=80, width=80, padding=(0, 5)))
         self.url_input = toga.TextInput(style=Pack(flex=1), placeholder='Entrez une URL', on_change=self.on_url_input_change)
         
         self.select_box = toga.Box(style=Pack(flex=1, padding_left=5))
@@ -122,7 +137,7 @@ class Audeo(toga.App):
         
         ico_1_box.add(ico)
         ico_2_box.add(title, self.url_input, self.select_box)
-        self.dow_box = toga.Box(style=Pack(direction=COLUMN, alignment=CENTER, padding_left=5, flex=1))
+        self.dow_box = toga.Box(style=Pack(direction=COLUMN, alignment=CENTER, background_color='#D3D3D3', padding_left=5, flex=1))
         self.dow_scrol = toga.ScrollContainer(style=Pack(direction=COLUMN, alignment=CENTER, flex=1 ), content=self.dow_box)  # Initialiser dow_box
         
         ico_box.add(ico_1_box, ico_2_box)
@@ -182,8 +197,12 @@ class Audeo(toga.App):
                 
         return self.ffmpeg_path
         
-    def create_progress_widgets(self):
-        return ProgressWidgets()
+    def create_progress_widgets(self, id):
+        """Créer un widget de progression
+        
+        :param id: ID unique pour le widget de progression correspondant au thread de téléchargement
+        """
+        return ProgressWidgets(id)
     
     def on_url_input_change(self, widget):
         # Activer ou désactiver le bouton de lancement en fonction de la validité de l'URL
@@ -234,10 +253,15 @@ class Audeo(toga.App):
         # Lancer le téléchargement
         download_thread = threading.Thread(target=self.start_download, args=(url,))
         download_thread.start()
+        
+        self.thread_nb += 1
         print(f"Lancement de l'opération pour l'URL: {url}")
     
     def start_download(self, url):
-        print("Audeo instance in start_download:", Audeo.instance)
+        """Lance l'opération de téléchargement
+        
+        :param url: URL de la vidéo
+        """
         down = downloader.Downloader()
         down.download(url, self.options, Audeo.instance)
     
@@ -275,7 +299,10 @@ class Audeo(toga.App):
             print("No folder selected")
     
     def update_options(self, new_options):
-        """Met à jour les options de l'application avec les nouvelles options"""
+        """Met à jour les options de l'application avec les nouvelles options
+        
+        :param new_options: Dictionnaire contenant les nouvelles options
+        """
         # Fusionner les nouvelles options avec les options existantes
         self.options = dict()
         self.options.update({'paths': {'home': str(self.folder_path)},
@@ -292,6 +319,11 @@ class Audeo(toga.App):
             print(f"Erreur lors de la sauvegarde des options : {e}")
                 
     def update_progress(self, d, progress_widgets):
+        """Mettre à jour l'interface utilisateur avec les informations de progression
+        
+        :param d: Dictionnaire contenant les informations du fichier
+        :param progress_widgets: Widget de progression
+        """
         if d['status'] == 'downloading':
             percent_str = d['_percent_str'].strip('%')  # Extraire la valeur numérique
             progress_widgets.progress.value = float(percent_str)
@@ -301,8 +333,12 @@ class Audeo(toga.App):
             progress_widgets.progress_label.text = "Download complete"
         
     def update_file_info(self, file_info, progress_widgets):
-        # Mettre à jour l'interface utilisateur avec les informations du fichier
-        progress_widgets.file_name.text = file_info['filename'][0:40] + ('...' if len(file_info['filename']) > 30 else '')
+        """Mettre à jour l'interface utilisateur avec les informations du fichier
+        
+        :param file_info: Dictionnaire contenant les informations du fichier
+        :param progress_widgets: Widget de progression
+        """
+        progress_widgets.file_name.text = file_info['filename'][0:50] + ('...' if len(file_info['filename']) > 30 else '')
         progress_widgets.file_size.text = file_info['filesize']
         progress_widgets.file_index.text = str(file_info['index']) + '/' + str(file_info['total_entries'])
         if 'thumbnail_path' in file_info:
@@ -310,13 +346,34 @@ class Audeo(toga.App):
             progress_widgets.dow_pic.image = str(file_info['thumbnail_path']).replace('\\', '/')
 
     def download_stopped(self, widget=None):
-        """Appelé lorsque le téléchargement est arrêté"""
-        if self.downloader:
-            self.downloader.stop_download(widget)
+        """
+        Arrête le téléchargement en cours et nettoie l'interface
+        """
+        thread_id = widget.id
+        
+        try:
+            # Arrêter le téléchargement via l'instance du downloader
+            if hasattr(self, 'downloader') and self.downloader:
+                self.downloader.stop_download(thread_id)
+            
+            # Supprimer le widget de progression
+            self.remove_widget(widget)
+            
+            # Réinitialiser le widget de progression
+            self.current_progress_widgets = None
+            
+            # Réinitialiser l'état du téléchargement
+            if hasattr(self, 'downloader'):
+                self.downloader.clean_up()
+            
+            message = "Téléchargement arrêté par l'utilisateur"
+        except Exception as e:
+            print(f"Erreur lors de l'arrêt du téléchargement : {e}")
+            message = f"Une erreur est survenue lors du téléchargement : \n{e}"
         
         dialog = toga.InfoDialog(
             title="Information",
-            message="Téléchargement arrêté par l'utilisateur"
+            message=message
         )
         
         task = asyncio.create_task(self.main_window.dialog(dialog))
@@ -328,11 +385,32 @@ class Audeo(toga.App):
             self.current_progress_widgets = None
     
     def remove_widget(self, widget=None):
-        self.dow_box.remove()
+        """
+        Supprime le widget de téléchargement associé au bouton 
+        """
+        try:
+            # Trouver le widget parent à supprimer
+            widget_to_remove = widget.parent.parent
+            
+            # Supprimer le widget de la boîte de téléchargement
+            if widget_to_remove in self.dow_box.children:
+                self.dow_box.remove(widget_to_remove)
+            
+            # Optionnellement, arrêter le téléchargement associé
+            # Vous pouvez ajouter une logique pour identifier et arrêter le téléchargement spécifique
+        except Exception as e:
+            print(f"Erreur lors de la suppression du widget : {e}")
     
     def download_complete(self, error, items):
-        """Appelé lorsque le téléchargement est terminé"""
-        if error:
+        """Appelé lorsque le téléchargement est terminé
+        
+        :param error: Message d'erreur si le téléchargement a échoué
+        :param items: Nombre total d'erreurs
+        """
+        if error == 'Le fichier a déjà été téléchargé':
+            title = "Information"
+            msg = "Le fichier a déjà été téléchargé"
+        elif error:
             title = "Erreur"
             msg = f"{error}\\{items} files failed to download\n{items-error} files downloaded successfully"
         else:
@@ -347,7 +425,10 @@ class Audeo(toga.App):
         task.add_done_callback(self.dialog_closed) 
     
     def download_error(self, message):
-        """Appelé lorsque le téléchargement rencontre une erreur"""
+        """Appelé lorsque le téléchargement rencontre une erreur
+        
+        :param message: Message d'erreur
+        """
         dialog = toga.ErrorDialog(
             title="Erreur",
             message=message
@@ -369,3 +450,6 @@ class Audeo(toga.App):
 
 def main():
     return Audeo()
+
+if __name__ == "__main__":
+    main()

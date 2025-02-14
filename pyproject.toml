@@ -4,7 +4,7 @@ project_name = "Audeo"
 bundle = "com.eclouf.audeo"
 version = "0.0.1"
 url = "https://audeo.eclouf.com/audeo"
-license = "Other"
+license.file = "LICENSE"
 author = "Eclouf"
 author_email = "eclouf@gmail.com"
 
@@ -24,6 +24,9 @@ test_sources = [
 ]
 
 requires = [
+    "yt-dlp",
+    "requests",
+    "pillow"
 ]
 test_requires = [
     "pytest",
