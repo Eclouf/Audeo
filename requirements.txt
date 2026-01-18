@@ -1,5 +1,0 @@
-toga~=0.4.0
-yt-dlp>=2023.12.30
-Pillow>=10.1.0
-requests>=2.31.0
-briefcase~=0.3.17

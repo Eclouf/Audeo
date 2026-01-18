@@ -1,0 +1,2 @@
+[console_scripts]
+audeo-2 = audeo2.app:main
