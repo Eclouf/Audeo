@@ -23,6 +23,28 @@ class SettingsView:
             '"description:(Vol\\. ([^\\n]+))"\n'
         )
 
+        # Charger l'icône en premier (avant _build_general)
+        
+        icon_path = Path(__file__).resolve().parent.parent / "ressources" / "pictures"
+        self._folder_dest_icon = toga.Image(str(icon_path / "settings" / "folder-2-32.png"))
+        self._file_name_icon = toga.Image(str(icon_path / "settings" / "write-3-32.png"))
+        self._file_rewrite_icon = toga.Image(str(icon_path / "settings" / "file-32.png"))
+        self._speed_icon = toga.Image(str(icon_path / "settings" / "speed-32.png"))
+        #self._fragments_icon = toga.Image(str(icon_path / "settings" / "layers-32.png"))
+        self._thumbnail_icon = toga.Image(str(icon_path / "settings" / "thumbnail-32.png"))
+        self._playlist_icon = toga.Image(str(icon_path / "settings" / "playlist-32.png"))
+        self._folder_playlist_icon = toga.Image(str(icon_path / "settings" / "folder-32.png"))
+        self._metadata_icon = toga.Image(str(icon_path / "settings" / "metadata-32.png"))
+        self._metadata_search_icon = toga.Image(str(icon_path / "settings" / "script-32.png"))
+        self._codec_audio_icon = toga.Image(str(icon_path / "settings" / "codec-audio-32.png"))
+        self._ext_audio_icon = toga.Image(str(icon_path / "settings" / "container-audio-32.png"))
+        self._square_audio_icon = toga.Image(str(icon_path / "settings" / "square-48.png"))
+        self._codec_video_icon = toga.Image(str(icon_path / "settings" / "codec-video-32.png"))
+        self._ext_video_icon = toga.Image(str(icon_path / "settings" / "container-video-32.png"))
+        self._subs_icon = toga.Image(str(icon_path / "settings" / "subtitles-32.png"))
+        self._chapters_icon = toga.Image(str(icon_path / "settings" / "chapters-32.png"))
+
+
         general = self._wrap_scroll(self._build_general())
         metadata = self._wrap_scroll(self._build_metadata())
         audio = self._wrap_scroll(self._build_audio())
@@ -57,13 +79,23 @@ class SettingsView:
     def _wrap_scroll(self, content: toga.Widget) -> toga.ScrollContainer:
         return toga.ScrollContainer(content=content, style=Pack(flex=1))
 
-    def _row(self, label: str, widget: toga.Widget) -> toga.Box:
-        left = toga.Label(label, style=Pack(width=300, margin=(5, 5, 5, 5)))
-        widget.style=Pack(margin=(5, 5, 5, 5), flex=1)
+    def _row(self, label: str, widget: toga.Widget, icon=None) -> toga.Box:
+        if icon:
+            left = toga.Box(
+                children=[
+                    toga.ImageView(icon, style=Pack(width=24, height=24, margin=(5, 5, 5, 5))),
+                    toga.Label(label, style=Pack(margin=(5, 5, 5, 5))),
+                ],
+                style=Pack(direction="row", align_items="center", width=300)
+            )
+        else:
+            left = toga.Label(label, style=Pack(width=300, margin=(5, 5, 5, 5)))
+
+        widget.style=Pack(width=150, margin=(5, 5, 5, 5))
         frame = toga.Box(
             children=[
                 toga.Box(  # Row interne pour label+widget
-                    children=[left, widget],
+                    children=[left, toga.Box(style=Pack(flex=1)), widget],
                     style=Pack(direction="row", margin=1.5, background_color="#f0f0f0", flex=1)
                 )
             ],
@@ -121,15 +153,15 @@ class SettingsView:
         self.playlist_folder_input = toga.TextInput(value=g.playlist_folder_name, style=Pack(flex=1, margin_top=5, margin_bottom=5))
 
         box = toga.Box(style=Pack(direction="column", flex=1, margin_top=15, margin_left=10, margin_right=10))
-        box.add(self._row("Dossier de destination", dest_row))
+        box.add(self._row("Dossier de destination", dest_row, icon=self._folder_dest_icon))
         box.add(self._row("Format de sortie (yt-dlp `format`)", self.output_format_input))
-        box.add(self._row("Modèle de nom de fichier (outtmpl)", self.output_template_input))
-        box.add(self._row("Remplacer les fichiers existants", self.overwrite_switch))
-        box.add(self._row("Limiter la vitesse (KiB/s)", limit_rate_row))
-        box.add(self._row("Fragments téléchargés simultanément", self.fragments_input))
-        box.add(self._row("Ajouter la vignette", self.add_thumbnail_switch))
-        box.add(self._row("Télécharger les playlists", self.download_playlist_switch))
-        box.add(self._row("Nom du dossier pour playlists", self.playlist_folder_input))
+        box.add(self._row("Modèle de nom de fichier (outtmpl)", self.output_template_input, icon=self._file_name_icon))
+        box.add(self._row("Remplacer les fichiers existants", self.overwrite_switch, icon=self._file_rewrite_icon))
+        box.add(self._row("Limiter la vitesse (KiB/s)", limit_rate_row, icon=self._speed_icon))
+        box.add(self._row("Fragments téléchargés simultanément", self.fragments_input, icon=self._folder_playlist_icon))
+        box.add(self._row("Ajouter la vignette", self.add_thumbnail_switch, icon=self._thumbnail_icon))
+        box.add(self._row("Télécharger les playlists", self.download_playlist_switch, icon=self._playlist_icon))
+        box.add(self._row("Nom du dossier pour playlists", self.playlist_folder_input, icon=self._folder_playlist_icon))
         return box
 
     async def _choose_destination(self, widget: toga.Button) -> None:
@@ -195,9 +227,9 @@ class SettingsView:
         )
 
         box = toga.Box(style=Pack(direction="column",  flex=1, margin_top=15, margin_left=10, margin_right=10))
-        box.add(self._row("Ajouter les métadonnées", self.add_metadata_switch))
+        box.add(self._row("Ajouter les métadonnées", self.add_metadata_switch, icon=self._metadata_icon))
         box.add(self._column("Métadonnées personnalisées (clé=valeur)", self.custom_metadata_input))
-        box.add(self._row("Détecter des métadonnées (parse-metadata)", self.parse_metadata_switch))
+        box.add(self._row("Détecter des métadonnées (parse-metadata)", self.parse_metadata_switch, icon=self._metadata_search_icon))
         box.add(self._column("Règles parse-metadata (1 par ligne)", self.parse_metadata_rules_input))
         box.add(open_cfg_btn)
         return box
@@ -285,9 +317,9 @@ class SettingsView:
         self.audio_square_thumb_switch = toga.Switch("", value=a.square_thumbnail)
 
         box = toga.Box(style=Pack(direction="column",  flex=1, margin_top=15, margin_left=10, margin_right=10))
-        box.add(self._row("Codec préféré", self.audio_codec_select))
-        box.add(self._row("Extension / conteneur", self.audio_ext_select))
-        box.add(self._row("Vignette carrée", self.audio_square_thumb_switch))
+        box.add(self._row("Codec préféré", self.audio_codec_select, icon=self._codec_audio_icon))
+        box.add(self._row("Extension / conteneur", self.audio_ext_select, icon=self._ext_audio_icon))
+        box.add(self._row("Vignette carrée", self.audio_square_thumb_switch, icon=self._square_audio_icon))
         return box
 
     def _apply_audio(self, widget: toga.Button) -> None:
@@ -310,10 +342,10 @@ class SettingsView:
         self.video_chapters_switch = toga.Switch("", value=v.chapters)
 
         box = toga.Box(style=Pack(direction="column",  flex=1, margin_top=15, margin_left=10, margin_right=10))
-        box.add(self._row("Codec préféré", self.video_codec_select))
-        box.add(self._row("Extension / conteneur", self.video_ext_select))
-        box.add(self._row("Sous-titres", self.video_subs_switch))
-        box.add(self._row("Chapitres", self.video_chapters_switch))
+        box.add(self._row("Codec préféré", self.video_codec_select, icon=self._codec_video_icon))
+        box.add(self._row("Extension / conteneur", self.video_ext_select, icon=self._ext_video_icon))
+        box.add(self._row("Sous-titres", self.video_subs_switch, icon=self._subs_icon))
+        box.add(self._row("Chapitres", self.video_chapters_switch, icon=self._chapters_icon))
         return box
 
     def _apply_video(self, widget: toga.Button) -> None:
