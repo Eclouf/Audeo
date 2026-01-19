@@ -157,6 +157,50 @@ Provides an interface for configuring application settings:
    pip install -e .
    ```
 
+## Building an Executable
+
+You can create a standalone Windows executable using PyInstaller. This allows users to run Audeo without needing Python installed.
+
+### Quick Build
+
+**Windows (PowerShell):**
+```powershell
+.\build.ps1
+```
+
+**Windows (Command Line):**
+```cmd
+python devscripts/build.py
+```
+
+**Linux/macOS:**
+```bash
+bash build.sh
+```
+
+### Build Options
+
+```bash
+# Single file (default, ~150-200 MB)
+python devscripts/build.py
+
+# Directory (better for updates)
+python devscripts/build.py --onedir
+
+# Optimized (slower build, smaller size)
+python devscripts/build.py --optimize
+
+# Debug mode
+python devscripts/build.py --debug
+```
+
+### Output
+
+- **Single file**: `dist/Audeo.exe`
+- **Directory**: `dist/Audeo/`
+
+See [BUILD.md](BUILD.md) for detailed build instructions and troubleshooting.
+
 ## Dependencies
 
 The application relies on the following key packages:

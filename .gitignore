@@ -400,6 +400,8 @@ FodyWeavers.xsd
 
 venv/
 venvlinux/
+build/
+dist/
 src/audeo/resources/ffmpeg/linux-x64/
 src/audeo/resources/ffmpeg/linux-arm64/
 src/audeo/resources/ffmpeg/windows-x64/
