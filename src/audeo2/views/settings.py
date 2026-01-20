@@ -30,7 +30,7 @@ class SettingsView:
         self._file_name_icon = toga.Image(str(icon_path / "settings" / "write-3-32.png"))
         self._file_rewrite_icon = toga.Image(str(icon_path / "settings" / "file-32.png"))
         self._speed_icon = toga.Image(str(icon_path / "settings" / "speed-32.png"))
-        #self._fragments_icon = toga.Image(str(icon_path / "settings" / "layers-32.png"))
+        self._fragments_icon = toga.Image(str(icon_path / "settings" / "fragements-48.png"))
         self._thumbnail_icon = toga.Image(str(icon_path / "settings" / "thumbnail-32.png"))
         self._playlist_icon = toga.Image(str(icon_path / "settings" / "playlist-32.png"))
         self._folder_playlist_icon = toga.Image(str(icon_path / "settings" / "folder-32.png"))
@@ -90,12 +90,12 @@ class SettingsView:
                     toga.ImageView(icon, style=Pack(width=24, height=24, margin=(5, 5, 5, 5))),
                     toga.Label(label, style=Pack(margin=(5, 5, 5, 5))),
                 ],
-                style=Pack(direction="row", align_items="center", width=300)
+                style=Pack(direction="row", align_items="center", width=100)
             )
         else:
-            left = toga.Label(label, style=Pack(width=300, margin=(5, 5, 5, 5)))
+            left = toga.Label(label, style=Pack(width=100, margin=(5, 5, 5, 5)))
 
-        widget.style=Pack(direction="row", align_items="end", margin=(5, 5, 5, 5))
+        widget.style=Pack(direction="row", margin=(5, 5, 5, 5), flex=1)
         frame = toga.Box(
             children=[
                 toga.Box(  # Row interne pour label+widget
@@ -113,7 +113,7 @@ class SettingsView:
         return frame
     
     def _column(self, label: str, widget: toga.Widget) -> toga.Box:
-        left = toga.Label(label, style=Pack(width=600, margin=(5, 5, 5, 5)))
+        left = toga.Label(label, style=Pack(flex=1, margin=(5, 5, 5, 5)))
         widget.style=Pack(margin=(5, 5, 5, 5), flex=1)
         frame = toga.Box(
             children=[
@@ -140,7 +140,7 @@ class SettingsView:
         dest_row.add(self.dest_label)
         dest_row.add(choose_dest_btn)
 
-        self.output_template_input = toga.TextInput(value=g.output_template, style=Pack(flex=1, margin_top=5, margin_bottom=5))
+        self.output_template_input = toga.TextInput(value=g.output_template, placeholder="%(title)s.%(ext)s", style=Pack(flex=1, margin_top=5, margin_bottom=5))
         self.output_format_input = toga.TextInput(value=g.output_format, style=Pack(flex=1, margin_top=5, margin_bottom=5))
         
         self.overwrite_switch = toga.Switch("", value=g.overwrite)
@@ -154,8 +154,15 @@ class SettingsView:
         self.fragments_input = toga.NumberInput(value=max(1, g.concurrent_fragments), style=Pack(width=150, margin=5))
         self.add_thumbnail_switch = toga.Switch("", value=g.add_thumbnail)
         self.download_playlist_switch = toga.Switch("", value=g.download_playlist)
-        self.playlist_folder_input = toga.TextInput(value=g.playlist_folder_name, style=Pack(flex=1, margin_top=5, margin_bottom=5))
+        self.playlist_folder_input = toga.TextInput(value=g.playlist_folder_name, placeholder="%(album,playlist_title)s/", style=Pack(flex=1, margin_top=5, margin_bottom=5))
+        
+        box_proxy = toga.Box(style=Pack(direction="column", flex=1))
         self.proxy_url_input = toga.TextInput(value=g.proxy_url, placeholder="http://proxy.example.com:8080", style=Pack(margin_top=5, margin_bottom=5))
+        self.proxy_id_input = toga.TextInput(value=g.proxy_id, placeholder="username", style=Pack(margin_top=5, margin_bottom=5))
+        self.proxy_password_input = toga.PasswordInput(value=g.proxy_password, placeholder="password", style=Pack(margin_top=5, margin_bottom=5))
+        box_proxy.add(self.proxy_url_input)
+        box_proxy.add(self.proxy_id_input)
+        box_proxy.add(self.proxy_password_input)
 
         box = toga.Box(style=Pack(direction="column", flex=1, margin_top=15, margin_left=10, margin_right=10))
         box.add(self._row("Dossier de destination", dest_row, icon=self._folder_dest_icon))
@@ -163,11 +170,11 @@ class SettingsView:
         box.add(self._row("Modèle de nom de fichier (outtmpl)", self.output_template_input, icon=self._file_name_icon))
         box.add(self._row("Remplacer les fichiers existants", self.overwrite_switch, icon=self._file_rewrite_icon))
         box.add(self._row("Limiter la vitesse (KiB/s)", limit_rate_row, icon=self._speed_icon))
-        box.add(self._row("Fragments téléchargés simultanément", self.fragments_input, icon=self._folder_playlist_icon))
+        box.add(self._row("Fragments téléchargés simultanément", self.fragments_input, icon=self._fragments_icon))
         box.add(self._row("Ajouter la vignette", self.add_thumbnail_switch, icon=self._thumbnail_icon))
         box.add(self._row("Télécharger les playlists", self.download_playlist_switch, icon=self._playlist_icon))
         box.add(self._row("Nom du dossier pour playlists", self.playlist_folder_input, icon=self._folder_playlist_icon))
-        box.add(self._row("URL du proxy", self.proxy_url_input, icon=self._proxy_icon))
+        box.add(self._row("URL du proxy", toga.Box(children=[box_proxy]), icon=self._proxy_icon))
         return box
 
     async def _choose_destination(self, widget: toga.Button) -> None:
@@ -210,6 +217,8 @@ class SettingsView:
         g.download_playlist = bool(self.download_playlist_switch.value)
         g.playlist_folder_name = (self.playlist_folder_input.value or "").strip()
         g.proxy_url = (self.proxy_url_input.value or "").strip()
+        g.proxy_id = (self.proxy_id_input.value or "").strip()
+        g.proxy_password = (self.proxy_password_input.value or "").strip()
         self.app.save_settings()
 
     def _build_metadata(self) -> toga.Widget:

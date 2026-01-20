@@ -40,7 +40,24 @@ class DownloadsView:
         top.add(terminal_btn)
 
         self.cards_box = toga.Box(style=Pack(direction="column"))
-        scroller = toga.ScrollContainer(content=self.cards_box, style=Pack(flex=1))
+        
+        # Image par défaut quand aucune carte n'est affichée
+        icons_dir = Path(__file__).resolve().parent.parent / "ressources"
+        self.default_image = toga.Image(str(icons_dir / "default.png"))
+        self.default_image_view = toga.ImageView(
+            self.default_image, 
+            style=Pack(width=80, height=80, margin_top=50)
+        )
+        
+        # Conteneur pour centrer l'image
+        self.center_box = toga.Box(style=Pack(direction="column", align_items="center", justify_content="center", flex=1))
+        self.center_box.add(self.default_image_view)
+        
+        # Conteneur principal qui peut contenir soit les cartes, soit l'image par défaut
+        self.main_content_box = toga.Box(style=Pack(direction="column", flex=1))
+        self.main_content_box.add(self.center_box)
+        
+        scroller = toga.ScrollContainer(content=self.main_content_box, style=Pack(flex=1))
 
         self.widget = toga.Box(style=Pack(direction="column", flex=1))
         self.widget.add(top)
@@ -136,6 +153,21 @@ class DownloadsView:
         
         thread = threading.Thread(target=update_loop, daemon=True)
         thread.start()
+    
+    def _update_content_display(self) -> None:
+        """Met à jour l'affichage en fonction du nombre de cartes"""
+        # Vérifier si des cartes sont présentes
+        has_cards = hasattr(self.cards_box, 'children') and len(self.cards_box.children) > 0
+        
+        # Vider le conteneur principal
+        self.main_content_box.clear()
+        
+        if has_cards:
+            # Afficher les cartes
+            self.main_content_box.add(self.cards_box)
+        else:
+            # Afficher l'image par défaut centrée
+            self.main_content_box.add(self.center_box)
     
     def log_message(self, message: str) -> None:
         """Ajoute un message au buffer de log"""

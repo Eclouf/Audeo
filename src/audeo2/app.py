@@ -71,7 +71,7 @@ class Audeo2App(toga.App):
         self._thumb_cache: dict[str, Path] = {}
         self._thumb_inflight: set[str] = set()
 
-        self.main_window = toga.MainWindow(title=self.formal_name)
+        self.main_window = toga.MainWindow(title=self.formal_name, size=(900, 500))
 
         app_icon_path = Path(__file__).resolve().parent / "ressources" / "audeo.png"
         if app_icon_path.exists():
@@ -125,12 +125,28 @@ class Audeo2App(toga.App):
         self.cards_box = self.downloads_view.cards_box
         self.finished_cards_box = self.finished_view.cards_box
 
-        self.content = toga.Box(style=Pack(direction="column", flex=1, margin=10))
+        self.content = toga.Box(style=Pack(direction="column", flex=1))
         self._show_view("Téléchargements")
+        self.cadre = toga.Box(
+            children=[
+                toga.Box(style=Pack(background_color="#d3d3d3", height=1.5)),
+                self.content,
+                toga.Box(style=Pack(background_color="#d3d3d3", height=1.5))
+            ],
+            style=Pack(direction="column", flex=1)
+        )
 
         root = toga.Box(style=Pack(direction="row", flex=1))
         root.add(self.nav_box)
-        root.add(self.content)
+        root.add(toga.Box(children=[
+            toga.Box(children=[
+                toga.Box(style=Pack(background_color="#d3d3d3", width=1.5)),
+                self.cadre,
+                toga.Box(style=Pack(background_color="#d3d3d3", width=1.5))
+                ], style=Pack(direction="row", flex=1)),
+                toga.Box(style=Pack(height=5))
+           ], style=Pack(direction="column", flex=1)))
+        root.add(toga.Box(style=Pack(width=5)))
 
         self.main_window.content = root
         self.main_window.show()
@@ -335,6 +351,9 @@ class Audeo2App(toga.App):
             self._cards[task.task_id] = card
             self.cards_box.add(card)
         
+        # Mettre à jour l'affichage
+        self.downloads_view._update_content_display()
+        
         self.url_input.value = ""
 
     def _is_valid_url(self, url: str) -> bool:
@@ -453,6 +472,9 @@ class Audeo2App(toga.App):
         self.finished_cards_box.add(finished_card)
         self._cards.pop(task_id, None)
         self._final_files.pop(task_id, None)
+        
+        # Mettre à jour l'affichage
+        self.downloads_view._update_content_display()
 
     def _apply_error(self, task_id: str, e: Exception) -> None:
         card = self._cards.get(task_id)
