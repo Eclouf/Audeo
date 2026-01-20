@@ -24,6 +24,7 @@ from .download_manager import DownloadManager, DownloadProgress
 from .widgets import DownloadCard, DownloadCardModel, FinishedDownloadCard
 from .views import DownloadsView, FinishedDownloadsView, QueueView, SettingsView
 from .settings import AppSettings, load_settings, save_settings
+from .ffmpeg import FFmpegManager
 
 
 class Audeo2App(toga.App):
@@ -44,6 +45,20 @@ class Audeo2App(toga.App):
         self.config_dir = cfg_dir
 
         self.settings: AppSettings = load_settings(self.config_dir)
+        
+        # Vérifier et corriger la configuration ffmpeg
+        if self.settings.ffmpeg_path:
+            ffmpeg_test = Path(self.settings.ffmpeg_path)
+            if not ffmpeg_test.exists():
+                print(f"[Startup] Saved ffmpeg path does not exist: {self.settings.ffmpeg_path}")
+                print("[Startup] Resetting ffmpeg path")
+                self.settings.ffmpeg_path = None
+                # Sauvegarder immédiatement
+                try:
+                    save_settings(self.config_dir, self.settings)
+                except Exception:
+                    pass
+        
         try:
             settings_path = self.config_dir / "settings.json"
             if not settings_path.exists():
@@ -125,179 +140,117 @@ class Audeo2App(toga.App):
     def save_settings(self) -> None:
         save_settings(self.config_dir, self.settings)
 
-    def _bootstrap_ffmpeg(self) -> None:
-        if self.settings.ffmpeg_path:
-            # Vérifier si ffprobe est disponible avec le ffmpeg actuel
-            if self._check_ffprobe_available(self.settings.ffmpeg_path):
-                return
+    def _update_progress_ui(self, progress_bar, details_label, percent, message):
+        """Met à jour la GUI de progression (appelée depuis le thread principal)"""
+        try:
+            progress_bar.value = percent
+            details_label.text = message
+            print(f"[Progress] {percent}% - {message}")
+        except Exception as e:
+            print(f"[Progress update error] {e}")
 
+    def _bootstrap_ffmpeg(self) -> None:
+        """Vérifie et télécharge ffmpeg/ffprobe si nécessaire"""
+        # Créer le gestionnaire ffmpeg
+        ffmpeg_mgr = FFmpegManager(ffmpeg_path=self.settings.ffmpeg_path)
+        
+        # Vérifier si ffmpeg est déjà disponible
+        if ffmpeg_mgr.is_available():
+            print(f"[Bootstrap] ffmpeg already available: {self.settings.ffmpeg_path}")
+            return
+        
+        # Réinitialiser le chemin s'il n'existe plus
+        self.settings.ffmpeg_path = None
+        self.save_settings()
+
+        # Planifier le dialogue et téléchargement
         async def _prompt_and_install() -> None:
             try:
                 dialog = toga.QuestionDialog(
                     "Télécharger ffmpeg complet ?",
                     "ffmpeg et ffprobe sont nécessaires pour l'extraction audio, l'intégration de vignettes et certaines options.\n\nSouhaitez-vous les télécharger automatiquement ?",
                 )
-                ok = await dialog
-            except Exception:
+                ok = await self.main_window.dialog(dialog)
+            except Exception as e:
+                print(f"[Bootstrap] Dialog error: {e}")
                 ok = False
 
             if not ok:
+                print("[Bootstrap] FFmpeg download declined by user")
                 return
 
+            print("[Bootstrap] Starting FFmpeg download...")
+            
+            # Créer une fenêtre de progression
+            progress_box = toga.Box(style=Pack(direction="column", padding=20, flex=1))
+            
+            status_label = toga.Label(
+                "Téléchargement de ffmpeg...",
+                style=Pack(padding=10)
+            )
+            progress_bar = toga.ProgressBar(
+                max=100,
+                style=Pack(padding=10, flex=1)
+            )
+            details_label = toga.Label(
+                "Initialisation...",
+                style=Pack(padding=10)
+            )
+            
+            progress_box.add(status_label)
+            progress_box.add(progress_bar)
+            progress_box.add(details_label)
+            
+            progress_window = toga.Window(
+                title="Téléchargement ffmpeg",
+                content=progress_box,
+                size=(400, 80)
+            )
+            progress_window.show()
+            
+            # Créer le callback de progression thread-safe
+            def on_progress(percent, message):
+                """Callback appelé par le téléchargeur (depuis un thread)"""
+                # Mettre à jour la GUI de façon thread-safe
+                self.loop.call_soon_threadsafe(
+                    self._update_progress_ui, 
+                    progress_bar, 
+                    details_label, 
+                    percent, 
+                    message
+                )
+            
             try:
-                exe = await self.loop.run_in_executor(self.manager._executor, self._download_complete_ffmpeg)
-            except Exception:
-                return
-
-            if exe:
-                self.settings.ffmpeg_path = str(exe)
-                self.save_settings()
-
-        try:
-            asyncio.ensure_future(_prompt_and_install(), loop=self.loop)
-        except Exception:
-            return
-
-    def _check_ffprobe_available(self, ffmpeg_path: str) -> bool:
-        """Vérifie si ffprobe est disponible avec le ffmpeg donné"""
-        try:
-            import subprocess
-            import sys
-            from pathlib import Path
-            
-            ffmpeg_dir = Path(ffmpeg_path).parent
-            ffprobe_name = "ffprobe.exe" if sys.platform == "win32" else "ffprobe"
-            ffprobe_path = ffmpeg_dir / ffprobe_name
-            
-            if ffprobe_path.exists():
-                return True
-                
-            # Vérifier si ffprobe est dans le PATH
-            result = subprocess.run([ffprobe_name, "-version"], 
-                                capture_output=True, text=True, timeout=5)
-            return result.returncode == 0
-            
-        except Exception:
-            return False
-
-    def _download_complete_ffmpeg(self) -> Optional[Path]:
-        """Télécharge ffmpeg complet avec ffprobe en fonction du système"""
-        import sys
-        import subprocess
-        import tempfile
-        import urllib.request
-        import zipfile
-        from pathlib import Path
-        
-        # Créer une barre de progression
-        progress_dialog = toga.ProgressDialog(
-            "Téléchargement de ffmpeg",
-            "Téléchargement de ffmpeg et ffprobe...",
-            max=100
-        )
-        
-        try:
-            if sys.platform == "win32":
-                # Windows: télécharger ffmpeg-static builds
-                url = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
-                filename = "ffmpeg-master-latest-win64-gpl.zip"
-                exe_name = "ffmpeg.exe"
-                ffprobe_name = "ffprobe.exe"
-            elif sys.platform == "darwin":
-                # macOS: télécharger builds statiques
-                url = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-osx64-gpl.zip"
-                filename = "ffmpeg-master-latest-osx64-gpl.zip"
-                exe_name = "ffmpeg"
-                ffprobe_name = "ffprobe"
-            else:
-                # Linux: télécharger builds statiques
-                url = "https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz"
-                filename = "ffmpeg-master-latest-linux64-gpl.tar.xz"
-                exe_name = "ffmpeg"
-                ffprobe_name = "ffprobe"
-
-            # Créer le répertoire d'installation
-            install_dir = Path.home() / ".audeo2" / "ffmpeg"
-            install_dir.mkdir(parents=True, exist_ok=True)
-
-            # Télécharger l'archive avec progression
-            with tempfile.TemporaryDirectory() as temp_dir:
-                temp_path = Path(temp_dir) / filename
-                
-                def progress_hook(block_num, block_size, total_size):
-                    if total_size > 0:
-                        progress = min(100, int((block_num * block_size * 100) / total_size))
-                        progress_dialog.value = progress
-                
-                if hasattr(self, 'downloads_view'):
-                    self.downloads_view.log_info(f"Téléchargement de ffmpeg complet depuis {url}...")
-                
-                urllib.request.urlretrieve(url, temp_path, progress_hook)
-                progress_dialog.value = 50  # Téléchargement terminé, début de l'extraction
-                
-                # Extraire l'archive
-                if filename.endswith('.zip'):
-                    with zipfile.ZipFile(temp_path, 'r') as zip_ref:
-                        zip_ref.extractall(temp_dir)
+                exe = await self.loop.run_in_executor(
+                    None, 
+                    lambda: ffmpeg_mgr.download_and_install(progress_callback=on_progress)
+                )
+                if exe:
+                    self.settings.ffmpeg_path = str(exe)
+                    self.save_settings()
+                    print(f"[Bootstrap] FFmpeg saved: {exe}")
+                    status_label.text = "ffmpeg installé avec succès!"
+                    progress_bar.value = 100
+                    details_label.text = str(exe)
+                    # Fermer la fenêtre après 2 secondes
+                    await asyncio.sleep(2)
+                    progress_window.close()
                 else:
-                    # .tar.xz pour Linux
-                    import tarfile
-                    with tarfile.open(temp_path, 'r:xz') as tar_ref:
-                        tar_ref.extractall(temp_dir)
-                
-                progress_dialog.value = 75  # Extraction terminée
-                
-                # Trouver le répertoire ffmpeg extrait
-                extracted_dirs = [d for d in Path(temp_dir).iterdir() if d.is_dir() and 'ffmpeg' in d.name.lower()]
-                if not extracted_dirs:
-                    extracted_dirs = [d for d in Path(temp_dir).iterdir() if d.is_dir()]
-                
-                if not extracted_dirs:
-                    raise Exception("Impossible de trouver le répertoire ffmpeg extrait")
-                
-                ffmpeg_source_dir = extracted_dirs[0]
-                
-                # Copier les exécutables
-                import shutil
-                ffmpeg_source = ffmpeg_source_dir / "bin" / exe_name
-                ffprobe_source = ffmpeg_source_dir / "bin" / ffprobe_name
-                
-                if not ffmpeg_source.exists():
-                    # Chercher dans le répertoire principal
-                    ffmpeg_source = ffmpeg_source_dir / exe_name
-                    ffprobe_source = ffmpeg_source_dir / ffprobe_name
-                
-                if ffmpeg_source.exists():
-                    shutil.copy2(ffmpeg_source, install_dir / exe_name)
-                if ffprobe_source.exists():
-                    shutil.copy2(ffprobe_source, install_dir / ffprobe_name)
-                
-                # Rendre les exécutables exécutables (Linux/macOS)
-                if sys.platform != "win32":
-                    (install_dir / exe_name).chmod(0o755)
-                    (install_dir / ffprobe_name).chmod(0o755)
-            
-            progress_dialog.value = 100  # Installation terminée
-            
-            ffmpeg_path = install_dir / exe_name
-            ffprobe_path = install_dir / ffprobe_name
-            
-            if ffmpeg_path.exists() and ffprobe_path.exists():
-                if hasattr(self, 'downloads_view'):
-                    self.downloads_view.log_info(f"ffmpeg complet installé dans: {install_dir}")
-                return ffmpeg_path
-            else:
-                raise Exception("ffmpeg ou ffprobe manquant après extraction")
-                
+                    print("[Bootstrap] FFmpeg download failed (returned None)")
+                    status_label.text = "Erreur lors du téléchargement"
+                    details_label.text = "Veuillez réessayer plus tard"
+            except Exception as e:
+                print(f"[Bootstrap] FFmpeg download error: {e}")
+                import traceback
+                traceback.print_exc()
+                status_label.text = "Erreur lors du téléchargement"
+                details_label.text = str(e)
+
+        try:
+            # Utiliser call_soon pour planifier après le démarrage complet
+            self.loop.call_soon(lambda: asyncio.create_task(_prompt_and_install()))
         except Exception as e:
-            if hasattr(self, 'downloads_view'):
-                self.downloads_view.log_error(f"Erreur lors du téléchargement ffmpeg: {str(e)}")
-            return None
-        finally:
-            try:
-                progress_dialog.close()
-            except Exception:
-                pass
+            print(f"[Bootstrap] Error: {e}")
 
     def _build_downloads_view(self) -> toga.Widget:
         raise RuntimeError("This method is no longer used; use audeo2.views.DownloadsView")

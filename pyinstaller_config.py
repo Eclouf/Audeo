@@ -36,7 +36,7 @@ OPTIMIZE_SIZE = True
 
 # Collect data files
 DATA_FILES = [
-    ('src/audeo2/ressources', 'audeo2/ressources'),
+    ('src/audeo2', 'src/audeo2/ressources', 'audeo2/ressources'),
 ]
 
 # Binary excludes (reduce size by ~30-40%)

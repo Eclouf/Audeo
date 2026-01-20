@@ -584,6 +584,9 @@ class DownloadManager:
 
         if g.concurrent_fragments > 0:
             ydl_opts["concurrent_fragments"] = int(g.concurrent_fragments)
+            
+        if g.proxy_url:
+            ydl_opts["proxy"] = g.proxy_url
 
         # Handle metadata parsing
         if getattr(g, "parse_metadata_enabled", False):

@@ -34,8 +34,11 @@ class SettingsView:
         self._thumbnail_icon = toga.Image(str(icon_path / "settings" / "thumbnail-32.png"))
         self._playlist_icon = toga.Image(str(icon_path / "settings" / "playlist-32.png"))
         self._folder_playlist_icon = toga.Image(str(icon_path / "settings" / "folder-32.png"))
+        self._proxy_icon = toga.Image(str(icon_path / "settings" / "proxy-48.png"))
+        
         self._metadata_icon = toga.Image(str(icon_path / "settings" / "metadata-32.png"))
         self._metadata_search_icon = toga.Image(str(icon_path / "settings" / "script-32.png"))
+        
         self._codec_audio_icon = toga.Image(str(icon_path / "settings" / "codec-audio-32.png"))
         self._ext_audio_icon = toga.Image(str(icon_path / "settings" / "container-audio-32.png"))
         self._square_audio_icon = toga.Image(str(icon_path / "settings" / "square-48.png"))
@@ -43,6 +46,7 @@ class SettingsView:
         self._ext_video_icon = toga.Image(str(icon_path / "settings" / "container-video-32.png"))
         self._subs_icon = toga.Image(str(icon_path / "settings" / "subtitles-32.png"))
         self._chapters_icon = toga.Image(str(icon_path / "settings" / "chapters-32.png"))
+        
 
 
         general = self._wrap_scroll(self._build_general())
@@ -91,7 +95,7 @@ class SettingsView:
         else:
             left = toga.Label(label, style=Pack(width=300, margin=(5, 5, 5, 5)))
 
-        widget.style=Pack(width=150, margin=(5, 5, 5, 5))
+        widget.style=Pack(direction="row", align_items="end", margin=(5, 5, 5, 5))
         frame = toga.Box(
             children=[
                 toga.Box(  # Row interne pour label+widget
@@ -109,7 +113,7 @@ class SettingsView:
         return frame
     
     def _column(self, label: str, widget: toga.Widget) -> toga.Box:
-        left = toga.Label(label, style=Pack(width=500, margin=(5, 5, 5, 5)))
+        left = toga.Label(label, style=Pack(width=600, margin=(5, 5, 5, 5)))
         widget.style=Pack(margin=(5, 5, 5, 5), flex=1)
         frame = toga.Box(
             children=[
@@ -151,6 +155,7 @@ class SettingsView:
         self.add_thumbnail_switch = toga.Switch("", value=g.add_thumbnail)
         self.download_playlist_switch = toga.Switch("", value=g.download_playlist)
         self.playlist_folder_input = toga.TextInput(value=g.playlist_folder_name, style=Pack(flex=1, margin_top=5, margin_bottom=5))
+        self.proxy_url_input = toga.TextInput(value=g.proxy_url, placeholder="http://proxy.example.com:8080", style=Pack(margin_top=5, margin_bottom=5))
 
         box = toga.Box(style=Pack(direction="column", flex=1, margin_top=15, margin_left=10, margin_right=10))
         box.add(self._row("Dossier de destination", dest_row, icon=self._folder_dest_icon))
@@ -162,6 +167,7 @@ class SettingsView:
         box.add(self._row("Ajouter la vignette", self.add_thumbnail_switch, icon=self._thumbnail_icon))
         box.add(self._row("Télécharger les playlists", self.download_playlist_switch, icon=self._playlist_icon))
         box.add(self._row("Nom du dossier pour playlists", self.playlist_folder_input, icon=self._folder_playlist_icon))
+        box.add(self._row("URL du proxy", self.proxy_url_input, icon=self._proxy_icon))
         return box
 
     async def _choose_destination(self, widget: toga.Button) -> None:
@@ -203,6 +209,7 @@ class SettingsView:
         g.add_thumbnail = bool(self.add_thumbnail_switch.value)
         g.download_playlist = bool(self.download_playlist_switch.value)
         g.playlist_folder_name = (self.playlist_folder_input.value or "").strip()
+        g.proxy_url = (self.proxy_url_input.value or "").strip()
         self.app.save_settings()
 
     def _build_metadata(self) -> toga.Widget:

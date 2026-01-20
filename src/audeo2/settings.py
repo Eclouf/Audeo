@@ -22,6 +22,7 @@ class GeneralSettings:
     parse_metadata_rules: str = ""
     download_playlist: bool = False
     playlist_folder_name: str = ""  # Nom du dossier pour les playlists
+    proxy_url: str = ""  # URL du proxy (ex: http://proxy.example.com:8080)
 
 
 @dataclass(slots=True)
@@ -82,6 +83,7 @@ def load_settings(config_dir: Path) -> AppSettings:
             parse_metadata_rules=str(_get(g, "parse_metadata_rules", "") or ""),
             download_playlist=bool(_get(g, "download_playlist", False)),
             playlist_folder_name=str(_get(g, "playlist_folder_name", "") or ""),
+            proxy_url=str(_get(g, "proxy_url", "") or ""),
         ),
         video=VideoSettings(
             preferred_codec=str(_get(v, "preferred_codec", "auto")),
