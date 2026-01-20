@@ -22,7 +22,7 @@ import imageio_ffmpeg
 
 from .download_manager import DownloadManager, DownloadProgress
 from .widgets import DownloadCard, DownloadCardModel, FinishedDownloadCard
-from .views import DownloadsView, FinishedDownloadsView, QueueView, SettingsView
+from .views import DownloadsView, FinishedDownloadsView, VideoInfoView, SettingsView
 from .settings import AppSettings, load_settings, save_settings
 from .ffmpeg import FFmpegManager
 
@@ -98,10 +98,9 @@ class Audeo2App(toga.App):
                 style=Pack(margin=1, width=size, height=size)
             )
 
-        self.nav_btn_downloads = icon_button("download", self._go_downloads)
+        self.nav_btn_downloads = icon_button("download", self._go_downloads)  
         
-        
-        self.nav_btn_queue = icon_button("list", self._go_queue)
+        self.nav_btn_queue = icon_button("info", self._go_queue)
         
         self.nav_btn_finished = icon_button("list_end", self._go_finished)
         
@@ -113,7 +112,7 @@ class Audeo2App(toga.App):
         self.nav_box.add(self.nav_btn_settings)
 
         self.downloads_view = DownloadsView(self)
-        self.queue_view = QueueView(self)
+        self.queue_view = VideoInfoView(self)
         self.finished_view = FinishedDownloadsView(self)
         self.settings_view = SettingsView(self)
 
@@ -281,7 +280,7 @@ class Audeo2App(toga.App):
         self._show_view("Téléchargements")
 
     def _go_queue(self, widget: toga.Button) -> None:
-        self._show_view("En attente")
+        self._show_view("Informations")
 
     def _go_finished(self, widget: toga.Button) -> None:
         self._show_view("Terminés")
@@ -293,7 +292,7 @@ class Audeo2App(toga.App):
         self.content.clear()
         if name == "Téléchargements":
             self.content.add(self.downloads_view.widget)
-        elif name == "En attente":
+        elif name == "Informations":
             self.content.add(self.queue_view.widget)
         elif name == "Terminés":
             self.content.add(self.finished_view.widget)

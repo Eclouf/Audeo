@@ -1,6 +1,6 @@
-__all__ = ["DownloadsView", "QueueView", "SettingsView", "FinishedDownloadsView"]
+__all__ = ["DownloadsView", "VideoInfoView", "SettingsView", "FinishedDownloadsView"]
 
 from .downloads import DownloadsView
 from .finished import FinishedDownloadsView
-from .queue import QueueView
+from .queue import VideoInfoView
 from .settings import SettingsView
