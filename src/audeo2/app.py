@@ -100,19 +100,19 @@ class Audeo2App(toga.App):
 
         self.nav_btn_downloads = icon_button("download", self._go_downloads)  
         
-        self.nav_btn_queue = icon_button("info", self._go_queue)
+        self.nav_btn_info = icon_button("info", self._go_info)
         
         self.nav_btn_finished = icon_button("list_end", self._go_finished)
         
         self.nav_btn_settings = icon_button("settings", self._go_settings)
     
         self.nav_box.add(self.nav_btn_downloads)
-        self.nav_box.add(self.nav_btn_queue)
+        self.nav_box.add(self.nav_btn_info)
         self.nav_box.add(self.nav_btn_finished)
         self.nav_box.add(self.nav_btn_settings)
 
         self.downloads_view = DownloadsView(self)
-        self.queue_view = VideoInfoView(self)
+        self.info_view = VideoInfoView(self)
         self.finished_view = FinishedDownloadsView(self)
         self.settings_view = SettingsView(self)
 
@@ -270,8 +270,8 @@ class Audeo2App(toga.App):
     def _build_downloads_view(self) -> toga.Widget:
         raise RuntimeError("This method is no longer used; use audeo2.views.DownloadsView")
 
-    def _build_queue_view(self) -> toga.Widget:
-        raise RuntimeError("This method is no longer used; use audeo2.views.QueueView")
+    def _build_info_view(self) -> toga.Widget:
+        raise RuntimeError("This method is no longer used; use audeo2.views.infoView")
 
     def _build_settings_view(self) -> toga.Widget:
         raise RuntimeError("This method is no longer used; use audeo2.views.SettingsView")
@@ -279,7 +279,7 @@ class Audeo2App(toga.App):
     def _go_downloads(self, widget: toga.Button) -> None:
         self._show_view("Téléchargements")
 
-    def _go_queue(self, widget: toga.Button) -> None:
+    def _go_info(self, widget: toga.Button) -> None:
         self._show_view("Informations")
 
     def _go_finished(self, widget: toga.Button) -> None:
@@ -293,7 +293,7 @@ class Audeo2App(toga.App):
         if name == "Téléchargements":
             self.content.add(self.downloads_view.widget)
         elif name == "Informations":
-            self.content.add(self.queue_view.widget)
+            self.content.add(self.info_view.widget)
         elif name == "Terminés":
             self.content.add(self.finished_view.widget)
         else:

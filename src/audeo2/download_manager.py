@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
+from urllib.parse import urlparse, urlunparse
 
 import yt_dlp
 
@@ -586,7 +587,15 @@ class DownloadManager:
             ydl_opts["concurrent_fragments"] = int(g.concurrent_fragments)
             
         if g.proxy_url:
-            ydl_opts["proxy"] = g.proxy_url
+            parsed = urlparse(g.proxy_url)
+            # Construire l'URL complète avec authentification
+            if g.proxy_id and g.proxy_password:
+                # URL avec identifiants: http://user:pass@host:port
+                proxy_url = f"{parsed.scheme}://{g.proxy_id}:{g.proxy_password}@{parsed.hostname}:{parsed.port}"
+            else:
+                # URL sans identifiants: http://host:port
+                proxy_url = f"{parsed.scheme}://{parsed.hostname}:{parsed.port}"
+            ydl_opts["proxy"] = proxy_url
 
         # Handle metadata parsing
         if getattr(g, "parse_metadata_enabled", False):

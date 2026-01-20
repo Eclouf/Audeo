@@ -57,7 +57,7 @@ class DownloadCard(toga.Box):
         self.model = model
 
         default_path = Path(__file__).resolve().parent / "ressources"
-        self._default_image = toga.Image(str(default_path / "default.png"))
+        self._default_image = toga.Image(str(default_path / "default-200.png"))
         self._play = toga.Icon(str(default_path / "pictures" / "play-24.png"))
         self._pause = toga.Icon(str(default_path / "pictures" / "pause-24.png"))
         self._stop = toga.Icon(str(default_path / "pictures" / "stop-24.png"))
@@ -233,7 +233,7 @@ class FinishedDownloadCard(toga.Box):
     def __init__(self, *, title: str, size_text: str) -> None:
         super().__init__(style=toga.style.Pack(direction="row", margin=10))
 
-        default_path = Path(__file__).resolve().parent / "ressources" / "default.png"
+        default_path = Path(__file__).resolve().parent / "ressources" / "default-200.png"
         self._default_image = toga.Image(str(default_path))
 
         self.thumb = toga.ImageView(style=toga.style.Pack(width=120, height=68, margin_right=10))
