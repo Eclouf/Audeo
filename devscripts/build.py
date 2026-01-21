@@ -64,8 +64,8 @@ def build_executable(optimize=False, one_file=True, debug=False):
     
     # Prepare icon
     print("\n[2.5/5] Preparing icon...")
-    icon_path = root / "src" / "audeo2" / "ressources" / "pictures" / "audio" / "audeo-icon.ico"
-    icon_png = root / "src" / "audeo2" / "ressources" / "pictures" / "audio" / "audeo-icon.png"
+    icon_path = root / "src" / "audeo2" / "ressources" / "audeo.ico"
+    icon_png = root / "src" / "audeo2" / "ressources" / "audeo.png"
     
     if not icon_path.exists() and icon_png.exists():
         print(f"  * Converting PNG to ICO...")
