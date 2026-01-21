@@ -491,9 +491,25 @@ class Audeo2App(toga.App):
                 except Exception:
                     pass
 
+DESCRIPTION = """
+Audeo is a user-friendly application built with Python and Toga that enables users to download audio and video content from various online sources.
+The application provides a queue-based management system, download tracking, and a clean graphical interface for managing your media library.
+    
+    - Developed with Python and Toga
+    - Uses api yt-dlp and ffmpeg
+"""
 
 def main() -> Audeo2App:
-    return Audeo2App("Audeo-2", "com.audeo.audeo2")
+    return Audeo2App(
+        formal_name="Audeo-2",
+        app_id="com.audeo.audeo2",
+        app_name="Audeo-2",
+        version="0.1.0",
+        author="Eclouf",
+        description=DESCRIPTION,
+        icon="ressources/audeo.png",
+        home_page="https://github.com/Eclouf/Audeo",
+        )
 
 
 if __name__ == "__main__":
