@@ -83,6 +83,14 @@ def build_executable(optimize=False, one_file=True, debug=False):
     else:
         print(f"  ! No icon found (optional)")
     
+    # Prepare version file
+    print("\n[2.6/5] Preparing version file...")
+    version_file = root / "version.txt"
+    if version_file.exists():
+        print(f"  + Version file found: {version_file}")
+    else:
+        print(f"  ! No version file found (optional)")
+    
     # Build PyInstaller command
     print("\n[3/5] Building PyInstaller command...")
     
@@ -101,6 +109,11 @@ def build_executable(optimize=False, one_file=True, debug=False):
     if icon_path.exists():
         cmd.extend(["--icon", str(icon_path)])
         print(f"  Using icon: {icon_path}")
+    
+    # Add version file if it exists
+    if version_file.exists():
+        cmd.extend(["--version-file", str(version_file)])
+        print(f"  Using version file: {version_file}")
     
     # Add optional flags
     if one_file:
@@ -153,6 +166,7 @@ def build_executable(optimize=False, one_file=True, debug=False):
         size_mb = exe_path.stat().st_size / (1024 * 1024)
         print(f"  + Executable created: {exe_path}")
         print(f"  + Size: {size_mb:.2f} MB")
+        print(f"  + Version info embedded from version.txt")
     else:
         print(f"  - Executable not found at {exe_path}")
         return False

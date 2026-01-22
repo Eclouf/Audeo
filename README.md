@@ -13,9 +13,14 @@ Audeo is a user-friendly application built with Python and Toga that enables use
 
 - 🎵 **Audio Downloads**: Download audio tracks from multiple online platforms
 - 🎬 **Video Downloads**: Download videos with support for various formats
-- 📋 **Download Queue**: Manage and organize your downloads with a queue system
+- 📋 **Video Information Explorer**: Analyze videos without downloading - view metadata, available formats, and technical details
+- 🔍 **Metadata Extraction**: Extract comprehensive video information including title, duration, uploader, views, and description
+- 📊 **Format Analysis**: Interactive table showing all available formats with resolution, codec, file size, and FPS
+- ⚡ **Direct Download**: Launch downloads directly from the information view after analysis
+- 📥 **Download Queue**: Manage and organize your downloads with a queue system
 - ✅ **Download History**: Track completed downloads with a finished items view
-- ⚙️ **Configurable Settings**: Customize download options and application preferences
+- ⚙️ **Configurable Settings**: Customize download options, proxy settings, and application preferences
+- 🌐 **Proxy Support**: Full proxy configuration with authentication support for both analysis and downloads
 - 🎨 **Modern UI**: Clean and intuitive user interface built with Toga
 - 📊 **Download Management**: Monitor active downloads in real-time
 
@@ -38,7 +43,7 @@ audeo/
 │       ├── __init__.py              # Views package initialization
 │       ├── downloads.py             # Active downloads view
 │       ├── finished.py              # Completed downloads history
-│       ├── queue.py                 # Download queue management
+│       ├── info.py                  # Video information and analysis view
 │       └── settings.py              # Settings/preferences view
 ├── pyproject.toml                   # Project metadata and dependencies
 ├── README.md                        # This file
@@ -105,21 +110,26 @@ Shows the history of all completed downloads. Users can:
 - Redownload items if needed
 - Clear download history
 
-#### views/queue.py
-Manages the download queue where users can:
-- Add new downloads
-- Reorder items in the queue
-- Remove items from the queue
-- View upcoming downloads
-- Control queue priority
+#### views/info.py
+**New in v0.1.0** - Comprehensive video information and analysis interface where users can:
+- Enter video URLs for analysis without downloading
+- View detailed metadata (title, duration, uploader, views, date, description)
+- Browse available formats in an interactive table
+- See format details (resolution, codec, file size, FPS)
+- Launch downloads directly from the analysis results
+- Filter and sort formats by quality or type
+
+#### views/queue.py (deprecated in v0.1.0)
+*This view has been replaced by the Video Information Explorer (views/info.py)*
 
 #### views/settings.py
 Provides an interface for configuring application settings:
 - Download location preferences
 - Default audio/video formats
-- Notification preferences
-- Application theme settings
-- Advanced options
+- Proxy configuration (URL, username, password)
+- Metadata and thumbnail options
+- Playlist handling settings
+- Advanced options and custom parameters
 
 ## Installation
 
@@ -225,10 +235,13 @@ audeo-2
 
 ### Basic Workflow
 
-1. **Add Downloads**: Navigate to the queue view and add new download URLs
-2. **Monitor Progress**: Switch to the downloads view to track active downloads
-3. **View History**: Check the finished view to see completed downloads
-4. **Configure Settings**: Adjust preferences in the settings view as needed
+1. **Analyze Videos**: Navigate to the Information tab and enter video URLs to analyze without downloading
+2. **View Details**: Examine metadata, available formats, and technical specifications
+3. **Select Format**: Choose the desired format from the interactive formats table
+4. **Download**: Launch downloads directly from the information view
+5. **Monitor Progress**: Switch to the downloads view to track active downloads
+6. **View History**: Check the finished view to see completed downloads
+7. **Configure Settings**: Adjust preferences, proxy settings, and other options as needed
 
 ## Development
 
@@ -260,15 +273,37 @@ pylint src/
 Application settings can be configured through:
 
 1. **GUI Settings View**: User-friendly interface for common settings
-2. **settings.py**: Programmatic configuration for advanced users
-3. **Environment Variables**: System-level configuration options
+2. **Proxy Configuration**: Complete proxy support with authentication
+   - HTTP/HTTPS proxy URLs
+   - Username and password support
+   - Automatic proxy detection for video analysis and downloads
+3. **settings.py**: Programmatic configuration for advanced users
+4. **Environment Variables**: System-level configuration options
+
+### Proxy Setup
+
+To configure proxy settings:
+
+1. Open the Settings view
+2. Navigate to the General tab
+3. Enter your proxy URL (e.g., `http://proxy.example.com:8080`)
+4. Add username and password if required
+5. Proxy will be automatically used for both video analysis and downloads
 
 ## Troubleshooting
+
+### Video Analysis Fails
+- Verify the URL is valid and accessible
+- Check your internet connection
+- If using a proxy, verify proxy settings are correct
+- Some platforms may restrict metadata access
+- Check logs for detailed error messages
 
 ### Download Fails
 - Verify the URL is valid and accessible
 - Check your internet connection
 - Ensure the output directory has write permissions
+- If using a proxy, verify proxy authentication
 - Check logs for detailed error messages
 
 ### Application Won't Start
@@ -336,4 +371,5 @@ Users are encouraged to:
 ---
 
 **Project Home:** Audeo - Audio and Video Downloader  
-**Last Updated:** January 18, 2026
+**Last Updated:** January 22, 2026  
+**Version:** 0.1.0

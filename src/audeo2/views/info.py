@@ -136,6 +136,19 @@ class VideoInfoView:
                 'extract_flat': False,
             }
             
+            # Ajouter le proxy s'il est configuré
+            settings = self.app.settings
+            if settings.general.proxy_url:
+                from urllib.parse import urlparse
+                parsed = urlparse(settings.general.proxy_url)
+                if settings.general.proxy_id and settings.general.proxy_pw:
+                    # URL avec identifiants: http://user:pass@host:port
+                    proxy_url = f"{parsed.scheme}://{settings.general.proxy_id}:{settings.general.proxy_pw}@{parsed.hostname}:{parsed.port}"
+                else:
+                    # URL sans identifiants: http://host:port
+                    proxy_url = f"{parsed.scheme}://{parsed.hostname}:{parsed.port}"
+                ydl_opts['proxy'] = proxy_url
+            
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
                 

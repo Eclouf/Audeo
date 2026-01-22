@@ -606,7 +606,7 @@ class DownloadManager:
             ydl_opts["concurrent_fragments"] = int(g.concurrent_fragments)
             
         if g.proxy_url:
-            proxy_url = self._url_proxy_parsing(g.proxy_url, g.proxy_id, g.proxy_password)
+            proxy_url = self._url_proxy_parsing(g.proxy_url, g.proxy_id, g.proxy_pw)
             ydl_opts["proxy"] = proxy_url
         
         # Format selection
