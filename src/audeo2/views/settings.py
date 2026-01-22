@@ -159,10 +159,10 @@ class SettingsView:
         box_proxy = toga.Box(style=Pack(direction="column", flex=1))
         self.proxy_url_input = toga.TextInput(value=g.proxy_url, placeholder="http://proxy.example.com:8080", style=Pack(margin_top=5, margin_bottom=5))
         self.proxy_id_input = toga.TextInput(value=g.proxy_id, placeholder="username", style=Pack(margin_top=5, margin_bottom=5))
-        self.proxy_password_input = toga.PasswordInput(value=g.proxy_password, placeholder="password", style=Pack(margin_top=5, margin_bottom=5))
+        self.proxy_pw_input = toga.PasswordInput(value=g.proxy_pw, placeholder="password", style=Pack(margin_top=5, margin_bottom=5))
         box_proxy.add(self.proxy_url_input)
         box_proxy.add(self.proxy_id_input)
-        box_proxy.add(self.proxy_password_input)
+        box_proxy.add(self.proxy_pw_input)
 
         box = toga.Box(style=Pack(direction="column", flex=1, margin_top=15, margin_left=10, margin_right=10))
         box.add(self._row("Dossier de destination", dest_row, icon=self._folder_dest_icon))
@@ -218,7 +218,7 @@ class SettingsView:
         g.playlist_folder_name = (self.playlist_folder_input.value or "").strip()
         g.proxy_url = (self.proxy_url_input.value or "").strip()
         g.proxy_id = (self.proxy_id_input.value or "").strip()
-        g.proxy_password = (self.proxy_password_input.value or "").strip()
+        g.proxy_pw = (self.proxy_pw_input.value or "").strip()
         self.app.save_settings()
 
     def _build_metadata(self) -> toga.Widget:

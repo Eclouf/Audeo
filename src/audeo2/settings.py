@@ -24,7 +24,7 @@ class GeneralSettings:
     playlist_folder_name: str = ""  # Nom du dossier pour les playlists
     proxy_url: str = ""  # URL du proxy (ex: http://proxy.example.com:8080)
     proxy_id: str = ""  # Identifiant proxy
-    proxy_password: str = ""  # Mot de passe proxy
+    proxy_pw: str = ""  # Mot de passe proxy
 
 
 @dataclass(slots=True)
@@ -87,7 +87,7 @@ def load_settings(config_dir: Path) -> AppSettings:
             playlist_folder_name=str(_get(g, "playlist_folder_name", "") or ""),
             proxy_url=str(_get(g, "proxy_url", "") or ""),
             proxy_id=str(_get(g, "proxy_id", "") or ""),
-            proxy_password=str(_get(g, "proxy_password", "") or ""),
+            proxy_pw=str(_get(g, "proxy_pw", "") or ""),
         ),
         video=VideoSettings(
             preferred_codec=str(_get(v, "preferred_codec", "auto")),
