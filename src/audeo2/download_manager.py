@@ -266,9 +266,12 @@ class DownloadManager:
             try:
                 # 1. Détection par analyse d'URL avec urllib
                 is_playlist = self._detect_playlist_by_url(url)
+                options = self._prepare_base_options(settings)
+                options['quiet'] = True
+                options['extract_flat'] = True
                 
                 # 2. Extraction complète pour confirmation avec yt-dlp
-                with yt_dlp.YoutubeDL({'quiet': True, 'extract_flat': True}) as ydl:
+                with yt_dlp.YoutubeDL(options) as ydl:
                     info = ydl.extract_info(url, download=False)
                     print("\n INFO LIST\n" + str(info) + "\n")
                     
@@ -346,6 +349,18 @@ class DownloadManager:
             task.future = self._executor.submit(self._run_download, task)
         return task
 
+    def _url_proxy_parsing(self, url: str, id: None | str, pw: None | str) -> str:
+        """Build proxy url from url, id and pw"""
+        parsed = urlparse(url)
+        # Construire l'URL complète avec authentification
+        if id and pw:
+            # URL avec identifiants: http://user:pass@host:port
+            proxy_url = f"{parsed.scheme}://{id}:{pw}@{parsed.hostname}:{parsed.port}"
+        else:
+            # URL sans identifiants: http://host:port
+            proxy_url = f"{parsed.scheme}://{parsed.hostname}:{parsed.port}"
+        return proxy_url
+
     def _prepare_base_options(self, settings: AppSettings) -> dict:
         """Prépare les options de base pour yt-dlp"""
         base_opts = {
@@ -356,6 +371,10 @@ class DownloadManager:
         
         if settings.ffmpeg_path:
             base_opts["ffmpeg_location"] = settings.ffmpeg_path
+        
+        if settings.general.proxy_url:
+            proxy_url = self._url_proxy_parsing(settings.general.proxy_url, settings.general.proxy_id, settings.general.proxy_pw)
+            base_opts["proxy"] = proxy_url
             
         return base_opts
 
@@ -587,16 +606,76 @@ class DownloadManager:
             ydl_opts["concurrent_fragments"] = int(g.concurrent_fragments)
             
         if g.proxy_url:
-            parsed = urlparse(g.proxy_url)
-            # Construire l'URL complète avec authentification
-            if g.proxy_id and g.proxy_password:
-                # URL avec identifiants: http://user:pass@host:port
-                proxy_url = f"{parsed.scheme}://{g.proxy_id}:{g.proxy_password}@{parsed.hostname}:{parsed.port}"
-            else:
-                # URL sans identifiants: http://host:port
-                proxy_url = f"{parsed.scheme}://{parsed.hostname}:{parsed.port}"
+            proxy_url = self._url_proxy_parsing(g.proxy_url, g.proxy_id, g.proxy_password)
             ydl_opts["proxy"] = proxy_url
-
+        
+        # Format selection
+        if g.output_format:
+            ydl_opts["format"] = g.output_format
+            if self._downloads_view:
+                self._downloads_view.log_info(f"Format personnalisé: {g.output_format}")
+        elif task.kind == "audio":
+            target_ext = None
+            if aset.preferred_codec and aset.preferred_codec != "auto":
+                target_ext = aset.preferred_codec
+            elif aset.ext and aset.ext != "auto":
+                target_ext = aset.ext
+            else:
+                target_ext = "m4a"
+            
+            # Stratégie : 1. Essayer le format cible direct, 2. Sinon convertir
+            if target_ext and target_ext != "auto":
+                # D'abord essayer de trouver le format avec l'extension souhaitée
+                ydl_opts["format"] = f"bestaudio[ext={target_ext}]/bestaudio"
+                if self._downloads_view:
+                    self._downloads_view.log_info(f"Audio: Recherche format {target_ext}, conversion si nécessaire")
+                
+                # Ajouter le postprocessor de conversion seulement si le format direct n'est pas trouvé
+                # yt-dlp utilisera le postprocessor seulement si le format cible n'est pas disponible
+                codec_map = {
+                    "mp3": "mp3",
+                    "m4a": "aac", 
+                    "aac": "aac",
+                    "opus": "opus",
+                    "vorbis": "libvorbis",
+                    "wav": "pcm_s16le",
+                    "flac": "flac",
+                    "alac": "alac"
+                }
+                
+                if target_ext in codec_map:
+                    ydl_opts.setdefault("postprocessors", []).append({
+                        "key": "FFmpegExtractAudio",
+                        "preferredcodec": codec_map[target_ext],
+                        "preferredquality": "0",  # Meilleure qualité
+                    })
+                    if self._downloads_view:
+                        self._downloads_view.log_info(f"Audio: Conversion vers {target_ext} si format direct non disponible")
+            else:
+                ydl_opts["format"] = "bestaudio/best"
+                if self._downloads_view:
+                    self._downloads_view.log_info("Audio: Meilleur qualité automatique")
+        else:
+            fmt = "bestvideo+bestaudio/best"
+            codec_name = "auto"
+            if vset.preferred_codec and vset.preferred_codec != "auto":
+                if vset.preferred_codec == "h264":
+                    fmt = "bestvideo[vcodec^=avc1]+bestaudio/best"
+                    codec_name = "H.264"
+                elif vset.preferred_codec == "vp9":
+                    fmt = "bestvideo[vcodec^=vp9]+bestaudio/best"
+                    codec_name = "VP9"
+                elif vset.preferred_codec == "av1":
+                    fmt = "bestvideo[vcodec^=av01]+bestaudio/best"
+                    codec_name = "AV1"
+            ydl_opts["format"] = fmt
+            if vset.ext and vset.ext != "auto":
+                ydl_opts["merge_output_format"] = vset.ext
+                if self._downloads_view:
+                    self._downloads_view.log_info(f"Vidéo: Codec {codec_name} -> Extension {vset.ext}")
+            elif self._downloads_view:
+                self._downloads_view.log_info(f"Vidéo: Codec {codec_name}")
+        
         # Handle metadata parsing
         if getattr(g, "parse_metadata_enabled", False):
             if self._downloads_view:
@@ -708,73 +787,6 @@ class DownloadManager:
             ydl_opts["embedchapters"] = True
             if self._downloads_view:
                 self._downloads_view.log_info("Chapitres: Activés")
-
-        # Format selection
-        if g.output_format:
-            ydl_opts["format"] = g.output_format
-            if self._downloads_view:
-                self._downloads_view.log_info(f"Format personnalisé: {g.output_format}")
-        elif task.kind == "audio":
-            target_ext = None
-            if aset.preferred_codec and aset.preferred_codec != "auto":
-                target_ext = aset.preferred_codec
-            elif aset.ext and aset.ext != "auto":
-                target_ext = aset.ext
-            else:
-                target_ext = "m4a"
-            
-            # Stratégie : 1. Essayer le format cible direct, 2. Sinon convertir
-            if target_ext and target_ext != "auto":
-                # D'abord essayer de trouver le format avec l'extension souhaitée
-                ydl_opts["format"] = f"bestaudio[ext={target_ext}]/bestaudio"
-                if self._downloads_view:
-                    self._downloads_view.log_info(f"Audio: Recherche format {target_ext}, conversion si nécessaire")
-                
-                # Ajouter le postprocessor de conversion seulement si le format direct n'est pas trouvé
-                # yt-dlp utilisera le postprocessor seulement si le format cible n'est pas disponible
-                codec_map = {
-                    "mp3": "mp3",
-                    "m4a": "aac", 
-                    "aac": "aac",
-                    "opus": "opus",
-                    "vorbis": "libvorbis",
-                    "wav": "pcm_s16le",
-                    "flac": "flac",
-                    "alac": "alac"
-                }
-                
-                if target_ext in codec_map:
-                    ydl_opts.setdefault("postprocessors", []).append({
-                        "key": "FFmpegExtractAudio",
-                        "preferredcodec": codec_map[target_ext],
-                        "preferredquality": "0",  # Meilleure qualité
-                    })
-                    if self._downloads_view:
-                        self._downloads_view.log_info(f"Audio: Conversion vers {target_ext} si format direct non disponible")
-            else:
-                ydl_opts["format"] = "bestaudio/best"
-                if self._downloads_view:
-                    self._downloads_view.log_info("Audio: Meilleur qualité automatique")
-        else:
-            fmt = "bestvideo+bestaudio/best"
-            codec_name = "auto"
-            if vset.preferred_codec and vset.preferred_codec != "auto":
-                if vset.preferred_codec == "h264":
-                    fmt = "bestvideo[vcodec^=avc1]+bestaudio/best"
-                    codec_name = "H.264"
-                elif vset.preferred_codec == "vp9":
-                    fmt = "bestvideo[vcodec^=vp9]+bestaudio/best"
-                    codec_name = "VP9"
-                elif vset.preferred_codec == "av1":
-                    fmt = "bestvideo[vcodec^=av01]+bestaudio/best"
-                    codec_name = "AV1"
-            ydl_opts["format"] = fmt
-            if vset.ext and vset.ext != "auto":
-                ydl_opts["merge_output_format"] = vset.ext
-                if self._downloads_view:
-                    self._downloads_view.log_info(f"Vidéo: Codec {codec_name} -> Extension {vset.ext}")
-            elif self._downloads_view:
-                self._downloads_view.log_info(f"Vidéo: Codec {codec_name}")
         
         return ydl_opts
         
