@@ -17,7 +17,6 @@ Audeo is a user-friendly application built with Python and Toga that enables use
 - 🔍 **Metadata Extraction**: Extract comprehensive video information including title, duration, uploader, views, and description
 - 📊 **Format Analysis**: Interactive table showing all available formats with resolution, codec, file size, and FPS
 - ⚡ **Direct Download**: Launch downloads directly from the information view after analysis
-- 📥 **Download Queue**: Manage and organize your downloads with a queue system
 - ✅ **Download History**: Track completed downloads with a finished items view
 - ⚙️ **Configurable Settings**: Customize download options, proxy settings, and application preferences
 - 🌐 **Proxy Support**: Full proxy configuration with authentication support for both analysis and downloads
