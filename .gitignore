@@ -407,6 +407,8 @@ audeo2.desktop
 com.eclouf.audeo2.metainfo.xml
 debian_control
 audeo2.spec
+*.spec
+*.AppImage
 
 # Virtual environments
 venv/
@@ -415,6 +417,7 @@ venvlinux/
 # Build directories
 build/
 dist/
+AppImage/
 
 # FFmpeg binaries
 src/audeo/resources/ffmpeg/linux-x64/

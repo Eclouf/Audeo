@@ -46,23 +46,128 @@ def build_executable(optimize=False, one_file=True, debug=False):
     return True
 
 def build_windows():
-    """Build pour Windows avec version.txt"""
+    """Build pour Windows avec support natif harmonisé"""
     root = Path(__file__).parent
-    version_file = root / "version.txt"
     
+    print("============================================================")
+    print("                   Audeo Build Script                        ")
+    print("============================================================")
+    
+    # Nettoyer les anciens builds
+    dist_dir = root / "dist"
+    build_dir = root / "build"
+    
+    if dist_dir.exists():
+        shutil.rmtree(dist_dir)
+        print(f"Cleaned {dist_dir}")
+    
+    if build_dir.exists():
+        shutil.rmtree(build_dir)
+        print(f"Cleaned {build_dir}")
+    
+    # Préparer l'icône
+    icon_path = root / "src" / "audeo2" / "ressources" / "audeo.ico"
+    icon_png = root / "src" / "audeo2" / "ressources" / "audeo.png"
+    
+    if not icon_path.exists() and icon_png.exists():
+        print(f"Converting PNG to ICO...")
+        try:
+            from PIL import Image
+            img = Image.open(icon_png)
+            img = img.resize((256, 256), Image.Resampling.LANCZOS)
+            img.save(icon_path, "ICO")
+            print(f"Icon created: {icon_path}")
+        except Exception as e:
+            print(f"Could not convert icon: {e}")
+    
+    # Commande PyInstaller harmonisée pour Windows
+    cmd = [
+        sys.executable,
+        "-m", "PyInstaller",
+        "--name", "Audeo",
+        "--windowed",
+        "--distpath", str(dist_dir),
+        "--workpath", str(build_dir),
+        "--specpath", str(build_dir),
+        "--clean",
+        "--onefile",
+        "--hidden-import", "toga_winforms",
+        "--hidden-import", "winforms",
+        "--hidden-import", "System.Drawing",
+        "--hidden-import", "System.Windows.Forms",
+        "--hidden-import", "yt_dlp",
+        "--hidden-import", "pillow",
+        "--exclude-module", "toga_cocoa",
+        "--exclude-module", "toga_gtk",
+        "--exclude-module", "toga_android",
+        "--exclude-module", "toga_iOS",
+        "--exclude-module", "toga_web",
+        # Exclusions pour réduire la taille
+        "--exclude-module", "matplotlib",
+        "--exclude-module", "numpy",
+        "--exclude-module", "scipy",
+        "--exclude-module", "pandas",
+        "--exclude-module", "jupyter",
+        "--exclude-module", "IPython",
+        "--exclude-module", "notebook",
+        "--exclude-module", "pytest",
+        "--exclude-module", "sphinx",
+        "--exclude-module", "pip",
+        "--exclude-module", "setuptools",
+        "--exclude-module", "wheel",
+        "--exclude-module", "distutils",
+        "--add-data", f"{root}/src/audeo2/ressources{os.pathsep}audeo2/ressources",
+        "audeo_runner.py"
+    ]
+    
+    # Ajouter l'icône si disponible
+    if icon_path.exists():
+        cmd.extend(["--icon", str(icon_path)])
+    
+    # Ajouter le fichier de version si disponible
+    version_file = root / "version.txt"
     if version_file.exists():
-        cmd = [
-            sys.executable, "-m", "PyInstaller",
-            "--name", "Audeo",
-            "--windowed",
-            "--version-file", str(version_file),
-            "--onefile",
-            "audeo_runner.py"
-        ]
-        print("Building Windows executable with version info...")
-        subprocess.run(cmd, check=True)
+        cmd.extend(["--version-file", str(version_file)])
+    
+    # Gérer les arguments supplémentaires
+    if hasattr(build_windows, 'onedir') and build_windows.onedir:
+        cmd.remove("--onefile")
+        cmd.append("--onedir")
+        print("Mode: Multiple files (onedir)")
     else:
-        print("Windows version file not found!")
+        print("Mode: Single file")
+    
+    # L'optimisation PyInstaller est désactivée car elle cause plus de problèmes que de bénéfices
+    # if hasattr(build_windows, 'optimize') and build_windows.optimize:
+    #     cmd.extend(["--optimize", "1"])
+    #     print("Optimizing bytecode (level 1)...")
+    
+    if hasattr(build_windows, 'debug') and build_windows.debug:
+        print("Debug mode enabled")
+    else:
+        cmd.append("--noconfirm")
+    
+    print("Building Windows executable with WinForms support...")
+    print(f"Command: {' '.join(cmd[:8])} ...")
+    
+    try:
+        subprocess.run(cmd, check=True)
+        print("Windows build completed successfully!")
+        
+        # Vérifier l'exécutable
+        exe_path = dist_dir / "Audeo.exe"
+        if exe_path.exists():
+            size_mb = exe_path.stat().st_size / (1024 * 1024)
+            print(f"Executable created: {exe_path}")
+            print(f"Size: {size_mb:.2f} MB")
+            return True
+        else:
+            print("Executable not found!")
+            return False
+            
+    except subprocess.CalledProcessError as e:
+        print(f"Build failed: {e}")
+        return False
 
 def build_macos():
     """Build pour macOS avec support natif"""
@@ -80,7 +185,7 @@ def build_macos():
         shutil.rmtree(build_dir)
         print(f"Cleaned {build_dir}")
     
-    # Commande PyInstaller optimisée pour macOS
+    # Commande PyInstaller harmonisée pour macOS
     cmd = [
         sys.executable,
         "-m", "PyInstaller",
@@ -96,14 +201,47 @@ def build_macos():
         "--hidden-import", "objc",
         "--hidden-import", "Foundation",
         "--hidden-import", "AppKit",
+        "--hidden-import", "yt_dlp",
+        "--hidden-import", "pillow",
         "--exclude-module", "toga_winforms",
         "--exclude-module", "toga_gtk",
         "--exclude-module", "toga_android",
         "--exclude-module", "toga_iOS",
         "--exclude-module", "toga_web",
+        # Exclusions pour réduire la taille
+        "--exclude-module", "matplotlib",
+        "--exclude-module", "numpy",
+        "--exclude-module", "scipy",
+        "--exclude-module", "pandas",
+        "--exclude-module", "jupyter",
+        "--exclude-module", "IPython",
+        "--exclude-module", "notebook",
+        "--exclude-module", "pytest",
+        "--exclude-module", "sphinx",
+        "--exclude-module", "pip",
+        "--exclude-module", "setuptools",
+        "--exclude-module", "wheel",
+        "--exclude-module", "distutils",
         "--add-data", f"{root}/src/audeo2/ressources{os.pathsep}audeo2/ressources",
         "audeo_runner.py"
     ]
+    
+    # L'optimisation PyInstaller est désactivée car elle cause plus de problèmes que de bénéfices
+    # if hasattr(build_macos, 'onedir') and build_macos.onedir:
+    #     cmd.remove("--onefile")
+    #     cmd.append("--onedir")
+    #     print("Mode: Multiple files (onedir)")
+    # else:
+    #     print("Mode: Single file")
+    
+    # if hasattr(build_macos, 'optimize') and build_macos.optimize:
+    #     cmd.extend(["--optimize", "1"])
+    #     print("Optimizing bytecode (level 1)...")
+    
+    if hasattr(build_macos, 'debug') and build_macos.debug:
+        print("Debug mode enabled")
+    else:
+        cmd.append("--noconfirm")
     
     print("Building macOS executable with Cocoa support...")
     print(f"Command: {' '.join(cmd[:8])} ...")
@@ -203,6 +341,7 @@ def create_macos_version_files():
 
 def build_linux():
     """Build pour Linux avec corrections GTK"""
+    import sys  # Import manquant
     root = Path(__file__).parent
     
     # Nettoyer les anciens builds
@@ -217,7 +356,7 @@ def build_linux():
         shutil.rmtree(build_dir)
         print(f"Cleaned {build_dir}")
     
-    # Commande PyInstaller optimisée pour Linux/GTK
+    # Commande PyInstaller harmonisée pour Linux/GTK
     cmd = [
         sys.executable,
         "-m", "PyInstaller",
@@ -236,6 +375,8 @@ def build_linux():
         "--hidden-import", "gi.repository.Gio",
         "--hidden-import", "gi.repository.GdkPixbuf",
         "--hidden-import", "cairo",
+        "--hidden-import", "yt_dlp",
+        "--hidden-import", "pillow",
         "--exclude-module", "toga_winforms",
         "--exclude-module", "toga_cocoa", 
         "--exclude-module", "toga_android",
@@ -244,6 +385,23 @@ def build_linux():
         "--add-data", f"{root}/src/audeo2/ressources{os.pathsep}audeo2/ressources",
         "audeo_runner.py"
     ]
+    
+    # L'optimisation PyInstaller est désactivée car elle cause plus de problèmes que de bénéfices
+    # if hasattr(build_linux, 'onedir') and build_linux.onedir:
+    #     cmd.remove("--onefile")
+    #     cmd.append("--onedir")
+    #     print("Mode: Multiple files (onedir)")
+    # else:
+    #     print("Mode: Single file")
+    
+    # if hasattr(build_linux, 'optimize') and build_linux.optimize:
+    #     cmd.extend(["--optimize", "1"])
+    #     print("Optimizing bytecode (level 1)...")
+    
+    if hasattr(build_linux, 'debug') and build_linux.debug:
+        print("Debug mode enabled")
+    else:
+        cmd.append("--noconfirm")
     
     print("Building Linux executable with GTK3 support...")
     print(f"Command: {' '.join(cmd[:8])} ...")
@@ -265,6 +423,24 @@ def build_linux():
             
             # Créer les fichiers de version Linux
             create_linux_version_files()
+            
+            # Créer les packages de distribution Linux
+            try:
+                sys.path.insert(0, str(root / "devscripts"))
+                from linux_dist import linux_dist
+                
+                # Chemins des fichiers pour linux_dist
+                exe_path = dist_dir / "Audeo"
+                desktop_path = root / "audeo2.desktop"
+                metainfo_path = root / "com.eclouf.audeo2.metainfo.xml"
+                
+                if linux_dist(exe_path, desktop_path, metainfo_path):
+                    print("Linux distribution packages created successfully!")
+                else:
+                    print("Warning: Linux distribution packages creation failed")
+                    
+            except Exception as e:
+                print(f"Warning: Could not create Linux distribution packages: {e}")
             
             return True
         else:
@@ -371,7 +547,7 @@ def main():
     parser.add_argument(
         "--optimize",
         action="store_true",
-        help="Optimize Python bytecode"
+        help="[DÉSACTIVÉ] L'optimisation PyInstaller cause plus de problèmes que de bénéfices"
     )
     
     parser.add_argument(
@@ -400,18 +576,28 @@ def main():
     
     try:
         if system == "windows":
-            build_windows()
+            # Passer les arguments à build_windows
+            build_windows.onedir = args.onedir
+            build_windows.optimize = args.optimize
+            build_windows.debug = args.debug
+            success = build_windows()
         elif system == "darwin":
-            build_macos()
+            success = build_macos()
         elif system == "linux":
-            build_linux()
+            success = build_linux()
         else:
             print(f"Unsupported platform: {system}")
             sys.exit(1)
         
-        print("\n" + "=" * 60)
-        print("Build completed successfully!")
-        print("=" * 60)
+        if success:
+            print("\n" + "=" * 60)
+            print("Build completed successfully!")
+            print("=" * 60)
+        else:
+            print("\n" + "=" * 60)
+            print("Build failed!")
+            print("=" * 60)
+            sys.exit(1)
         
     except Exception as e:
         print(f"Build failed: {e}")

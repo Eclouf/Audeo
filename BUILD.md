@@ -46,7 +46,14 @@ python build_multiplatform.py --platform macos
 
 ### Traditional Build Script
 ```bash
+# Use the original build script
 python devscripts/build.py
+```
+
+### Linux Distribution Script
+```bash
+# Create Linux distribution packages only
+python devscripts/linux_dist.py
 ```
 
 ## Build Options
@@ -106,11 +113,17 @@ The build process automatically creates platform-specific version files:
    - Better for updates, but requires folder structure
 
 ### Linux
-1. **Single file**:
-   - Use `dist/Audeo` with launcher script
+1. **AppImage (Recommended)**:
+   - Use `dist/Audeo-0.1.0-x86_64.AppImage` directly
+   - Portable, no installation required
+   - Run with: `./Audeo-0.1.0-x86_64.AppImage`
+
+2. **Manual Installation**:
+   - Use `dist/audeo2-0.1.0-linux-x86_64.tar.gz`
+   - Extract and run with launcher script
    - Run with: `./audeo-linux-launcher.sh`
 
-2. **Directory**:
+3. **Directory**:
    - Use entire `dist/Audeo/` folder
    - Install with: `sudo cp -r dist/Audeo /opt/`
 

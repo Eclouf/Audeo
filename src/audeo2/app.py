@@ -138,12 +138,13 @@ class Audeo2App(toga.App):
         root = toga.Box(style=Pack(direction="row", flex=1))
         root.add(self.nav_box)
         root.add(toga.Box(children=[
+            toga.Box(style=Pack(height=5)),
             toga.Box(children=[
                 toga.Box(style=Pack(background_color="#d3d3d3", width=1.5)),
                 self.cadre,
                 toga.Box(style=Pack(background_color="#d3d3d3", width=1.5))
                 ], style=Pack(direction="row", flex=1)),
-                toga.Box(style=Pack(height=5))
+            toga.Box(style=Pack(height=5))
            ], style=Pack(direction="column", flex=1)))
         root.add(toga.Box(style=Pack(width=5)))
 
