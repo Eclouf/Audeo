@@ -1,4 +1,8 @@
-# Audeo
+# <p align="center">![image](https://github.com/Eclouf/Audeo/blob/5335686113f9325f0d3bd00a0bb15b22a8c5f716/src/audeo2/ressources/audeo.png)</p>
+
+# <p align="center">Audeo</p>
+
+
 
 A modern desktop application for downloading and managing audio and video content from online platforms.
 

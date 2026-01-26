@@ -231,19 +231,35 @@ class DownloadCard(toga.Box):
 
 class FinishedDownloadCard(toga.Box):
     def __init__(self, *, title: str, size_text: str) -> None:
-        super().__init__(style=toga.style.Pack(direction="row", margin=10))
+        super().__init__(style=toga.style.Pack(direction="row", margin=2, background_color="#888888"))
 
         default_path = Path(__file__).resolve().parent / "ressources" / "default-200.png"
         self._default_image = toga.Image(str(default_path))
 
-        self.thumb = toga.ImageView(style=toga.style.Pack(width=120, height=68, margin_right=10))
+        self.thumb = toga.ImageView(style=toga.style.Pack(width=120, height=68, margin=(5, 5, 5, 5)))
         self.thumb.image = self._default_image
         self.title_label = toga.Label(title, style=toga.style.Pack(font_size=12, font_weight="bold"))
         self.size_label = toga.Label(size_text, style=toga.style.Pack(margin_top=4))
 
-        right = toga.Box(style=toga.style.Pack(direction="column", flex=1))
+        right = toga.Box(style=toga.style.Pack(direction="column", margin=(5, 5, 5, 5)))
         right.add(self.title_label)
         right.add(self.size_label)
+        
+        file_button = toga.Button("Fichier", on_press=self._show_file)
+        r_right = toga.Box(style=toga.style.Pack(direction="column", margin=(5, 5, 5, 5)))
+        r_right.add(file_button)
+        
+        main_container = toga.Box(
+            children=[self.thumb, right, r_right],
+            style=toga.style.Pack(
+                direction="row", 
+                margin=1.5, 
+                background_color="#f0f0f0", #couleur de fond
+                flex=1
+            )
+        )
 
-        self.add(self.thumb)
-        self.add(right)
+        self.add(main_container)
+
+    def _show_file(self, widget: toga.Button) -> None:
+        pass

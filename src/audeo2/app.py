@@ -26,6 +26,8 @@ from .views import DownloadsView, FinishedDownloadsView, VideoInfoView, Settings
 from .settings import AppSettings, load_settings, save_settings
 from .ffmpeg import FFmpegManager
 
+FRAME_COLOR = "#d3d3d3"
+FRAME_THICKNESS = 1.5
 
 class Audeo2App(toga.App):
     def startup(self) -> None:
@@ -128,9 +130,9 @@ class Audeo2App(toga.App):
         self._show_view("Téléchargements")
         self.cadre = toga.Box(
             children=[
-                toga.Box(style=Pack(background_color="#d3d3d3", height=1.5)),
+                toga.Box(style=Pack(background_color=FRAME_COLOR, height=FRAME_THICKNESS)),
                 self.content,
-                toga.Box(style=Pack(background_color="#d3d3d3", height=1.5))
+                toga.Box(style=Pack(background_color=FRAME_COLOR, height=FRAME_THICKNESS))
             ],
             style=Pack(direction="column", flex=1)
         )
@@ -140,9 +142,9 @@ class Audeo2App(toga.App):
         root.add(toga.Box(children=[
             toga.Box(style=Pack(height=5)),
             toga.Box(children=[
-                toga.Box(style=Pack(background_color="#d3d3d3", width=1.5)),
+                toga.Box(style=Pack(background_color=FRAME_COLOR, width=FRAME_THICKNESS)),
                 self.cadre,
-                toga.Box(style=Pack(background_color="#d3d3d3", width=1.5))
+                toga.Box(style=Pack(background_color=FRAME_COLOR, width=FRAME_THICKNESS))
                 ], style=Pack(direction="row", flex=1)),
             toga.Box(style=Pack(height=5))
            ], style=Pack(direction="column", flex=1)))

@@ -25,7 +25,7 @@ class VideoInfoView:
     def _build_ui(self) -> None:
         """Construit l'interface utilisateur"""
         # Conteneur principal
-        main_box = toga.Box(style=Pack(direction="column", flex=1, padding=10))
+        main_box = toga.Box(style=Pack(direction="column", flex=1, padding=5))
         
         # Section URL avec boutons
         url_section = toga.Box(style=Pack(direction="row", margin_bottom=15))

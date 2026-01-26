@@ -17,6 +17,6 @@ class FinishedDownloadsView:
         scroller = toga.ScrollContainer(content=self.cards_box, style=Pack(flex=1, margin_top=10))
 
         self.widget = toga.Box(style=Pack(direction="column", flex=1))
-        self.widget.add(toga.Label("Téléchargements terminés", style=Pack()))
+        self.widget.add(toga.Label("Téléchargements terminés", style=Pack(font_weight="bold", align_items="center", font_size=12,margin=5)))
         self.widget.add(scroller)
         self.widget.add(bottom_box)

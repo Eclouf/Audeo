@@ -25,7 +25,7 @@ class DownloadsView:
         self._terminal_window: Optional[TerminalWindow] = None
         self._terminal_text: Optional[toga.MultilineTextInput] = None
 
-        self.url_input = toga.TextInput(placeholder="URL YouTube...", style=Pack(flex=1, margin=5))
+        self.url_input = toga.TextInput(placeholder="URL ...", style=Pack(flex=1, margin=5))
         self.kind_select = toga.Selection(items=["video", "audio"], style=Pack(width=130, margin=5))
         self.kind_select.value = "video"
         add_btn = toga.Button("Ajouter", on_press=self.app._on_add, style=Pack(margin=5))
