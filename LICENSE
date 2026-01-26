@@ -1,0 +1,41 @@
+MIT License
+
+Copyright (c) 2026 Eclouf
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+---
+
+Audeo-2 v0.1.0
+
+A modern desktop application for downloading and managing audio and video content 
+from online platforms with video information analysis capabilities.
+
+Features:
+- Video information extraction and analysis
+- Audio and video downloads
+- Format selection and quality control
+- Proxy support with authentication
+- Modern GUI built with Toga
+
+This license allows free use, modification, and distribution of the software
+while maintaining copyright attribution.
+
+For more information about the project, visit:
+https://github.com/Eclouf/Audeo

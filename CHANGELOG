@@ -1,5 +1,54 @@
 # Audeo Release Notes
 
+## 0.1.0 (20 Jan 2026) pre-release
+
+### 🎉 Major Features
+- **📋 Video Information Tab**: Transformed queue view into comprehensive video information explorer
+- **🔍 Metadata Extraction**: Extract detailed video information without downloading
+- **📊 Format Analysis**: Display available formats with resolution, codec, and file size details
+- **⚡ Direct Download**: Launch downloads directly from information view
+
+### 🆕 New Features
+- **Video Info View**: Complete redesign of queue functionality
+  - URL input and analysis interface
+  - Detailed metadata display (title, duration, uploader, views, date, description)
+  - Interactive formats table with sorting by quality
+  - One-click download from analysis results
+- **Proxy Support**: Enhanced proxy configuration for both analysis and downloads
+  - Proxy settings in preferences
+  - Automatic proxy detection and application
+  - Support for authenticated proxies
+
+### 🔧 Improvements
+- **UI Enhancements**: 
+  - Updated navigation icons (info icon for information tab)
+  - Improved finished downloads layout with centered clear button
+  - Enhanced thumbnail handling with default-200.png
+- **Build System**: 
+  - Added version.txt for Windows executable metadata
+  - Integrated version information in PyInstaller build process
+  - Updated build scripts for better resource management
+
+### 🐛 Bug Fixes
+- Fixed proxy URL parsing and authentication
+- Improved error handling in video analysis
+- Enhanced download manager proxy integration
+- Corrected navigation references throughout application
+
+### 📦 Technical Changes
+- Renamed `QueueView` to `VideoInfoView` for clarity
+- Updated import statements and references
+- Refactored proxy handling into dedicated utility method
+- Enhanced settings structure for proxy configuration
+
+### 🔨 Development
+- Updated project documentation
+- Improved code organization and comments
+- Enhanced error messages and user feedback
+- Added comprehensive logging for debugging
+
+---
+
 ## 0.0.1 (31 Oct 2024)
 
 * Initial release
