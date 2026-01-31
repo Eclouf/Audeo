@@ -51,7 +51,7 @@ class VideoInfoView:
         # Section informations vidéo
         info_section = toga.Box(style=Pack(direction="column", margin_bottom=15))
         info_title = toga.Label(
-            "📹 Informations vidéo",
+            "Informations vidéo",
             style=Pack(font_size=14, font_weight="bold", margin_bottom=5)
         )
         
@@ -65,7 +65,7 @@ class VideoInfoView:
         # Section formats disponibles
         formats_section = toga.Box(style=Pack(direction="column", flex=1))
         formats_title = toga.Label(
-            "📋 Formats disponibles",
+            "Formats disponibles",
             style=Pack(font_size=14, font_weight="bold", margin_bottom=5)
         )
         
