@@ -316,13 +316,16 @@ class Audeo2App(toga.App):
         return f"{v:.1f} {units[i]}"
 
     def _build_manager(self) -> DownloadManager:
-        return DownloadManager(
+        self.manager = DownloadManager(
             max_workers=self.max_workers,
             on_progress=self._threadsafe_progress,
             on_finished=self._threadsafe_finished,
             on_error=self._threadsafe_error,
             downloads_view=self.downloads_view,
+            main_window=self.main_window,
+            on_tasks_ready=self._on_tasks_ready,
         )
+        return self.manager
 
     def _on_add(self, widget: toga.Button) -> None:
         url = (self.url_input.value or "").strip()
@@ -343,19 +346,10 @@ class Audeo2App(toga.App):
 
         kind = str(self.kind_select.value or "video")
 
-        # Lancer le téléchargement (retourne une liste de tâches)
-        tasks = self.manager.submit(url=url, output_dir=self.download_dir, kind=kind, settings=self.settings)
+        # Lancer le téléchargement (retourne immédiatement, les tâches seront créées de manière asynchrone)
+        self.manager.submit(url=url, output_dir=self.download_dir, kind=kind, settings=self.settings)
         
-        # Créer une carte pour chaque tâche
-        for task in tasks:
-            card = DownloadCard(DownloadCardModel(task_id=task.task_id, title=task.url, url=task.url, kind=kind))
-            card.set_app_reference(self)  # Définir la référence à l'application
-            self._cards[task.task_id] = card
-            self.cards_box.add(card)
-        
-        # Mettre à jour l'affichage
-        self.downloads_view._update_content_display()
-        
+        # L'interface reste responsive, les cartes seront créées via le callback _on_tasks_ready
         self.url_input.value = ""
 
     def _is_valid_url(self, url: str) -> bool:
@@ -368,6 +362,22 @@ class Audeo2App(toga.App):
         if not parts.netloc:
             return False
         return True
+
+    def _on_tasks_ready(self, tasks):
+        """Callback appelé quand les tâches de téléchargement sont prêtes"""
+        if tasks is None:
+            # Erreur fatale, ne rien faire
+            return
+        
+        # Créer une carte pour chaque tâche
+        for task in tasks:
+            card = DownloadCard(DownloadCardModel(task_id=task.task_id, title=task.url, url=task.url, kind=task.kind))
+            card.set_app_reference(self)  # Définir la référence à l'application
+            self._cards[task.task_id] = card
+            self.cards_box.add(card)
+            
+        # Mettre à jour l'affichage
+        self.downloads_view._update_content_display()
 
     def _threadsafe_progress(self, progress: DownloadProgress) -> None:
         self.loop.call_soon_threadsafe(self._apply_progress, progress)
@@ -482,6 +492,14 @@ class Audeo2App(toga.App):
         card = self._cards.get(task_id)
         if card:
             card.mark_error(str(e))
+            # Afficher une fenêtre de dialogue d'erreur avec la nouvelle syntaxe
+            dialog = toga.ErrorDialog(
+                title="Erreur de téléchargement",
+                message=f"Une erreur est survenue lors du téléchargement:\n\n{str(e)}"
+            )
+            # Créer une tâche async pour le dialogue
+            import asyncio
+            task = asyncio.create_task(self.main_window.dialog(dialog))
 
     def _on_clear_finished(self, widget: toga.Button) -> None:
         try:

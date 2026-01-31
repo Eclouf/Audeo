@@ -9,7 +9,7 @@ description = "Audeo-2"
 requires-python = ">=3.10"
 dependencies = [
   "toga>=0.4.5",
-  "yt-dlp>=2024.1.1",
+  "yt-dlp>=2026.01.29",
   "pillow>=10.0.0",
   "imageio-ffmpeg>=0.5.0",
 ]
