@@ -1,5 +1,57 @@
 # Audeo Release Notes
 
+## 0.2.0 (31 Jan 2026)
+
+### 🎉 Major Features
+- **🚀 Asynchronous Download Processing**: Complete rewrite of download submission to prevent UI blocking
+- **📁 Direct Folder Access**: Added "Fichier" button in download history to open destination folder directly
+- **🔄 Improved Error Handling**: Enhanced error dialogs with thread-safe notifications
+
+### 🆕 New Features
+- **Non-Blocking Playlist Detection**: Playlist detection now runs in background thread
+- **Cross-Platform File Explorer Integration**: 
+  - Windows: Native Explorer integration
+  - macOS: Finder integration  
+  - Linux: Multiple file manager support (Nautilus, Dolphin, Thunar, etc.)
+- **Smart Error Dialogs**: Replaced in-card error messages with native system dialogs
+- **Real-time Progress Animation**: Improved ActivityIndicator with proper start/stop methods
+
+### 🔧 Improvements
+- **UI Responsiveness**: 
+  - Eliminated UI freezing during playlist detection
+  - Immediate visual feedback with progress animations
+  - Asynchronous task creation and card updates
+- **Error Management**:
+  - Thread-safe error dialog notifications
+  - Early error termination to prevent cascading failures
+  - Cross-platform file browser fallbacks
+- **Download History**:
+  - Simplified file path resolution using destination folder
+  - No more temporary file tracking issues
+  - Direct folder access functionality
+
+### 🐛 Bug Fixes
+- Fixed UI blocking during playlist detection and processing
+- Resolved ActivityIndicator deprecation warnings (replaced .running with .start()/.stop())
+- Fixed temporary file path issues in download history
+- Corrected cross-platform file explorer integration
+- Improved error dialog thread safety
+
+### 📦 Technical Changes
+- Refactored `DownloadManager.submit()` for asynchronous operation
+- Added callback system for async task creation (`_on_tasks_ready`)
+- Simplified download history file path resolution
+- Enhanced cross-platform compatibility for file operations
+- Improved ActivityIndicator usage following Toga best practices
+
+### 🔨 Development
+- Added comprehensive logging for debugging async operations
+- Enhanced error messages with actionable solutions for Linux users
+- Improved code organization for better maintainability
+- Added fallback mechanisms for various Linux file managers
+
+---
+
 ## 0.1.0 (20 Jan 2026) pre-release
 
 ### 🎉 Major Features
