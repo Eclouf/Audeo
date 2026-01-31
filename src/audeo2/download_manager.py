@@ -268,14 +268,15 @@ class DownloadManager:
 
     def submit(self, *, url: str, output_dir: Path, kind: str, settings: AppSettings) -> list[DownloadTask]:
         """Télécharge une URL ou une playlist complète"""
+        # Démarrer l'animation immédiatement dans le thread principal
+        self._downloads_view.process_anim.start()
+        self._downloads_view.log_info("Détection de playlist en cours...")
+        
         # Lancer la détection dans un thread séparé pour ne pas bloquer l'interface
         import threading
         
         def _detect_and_submit():
             try:
-                # Détection robuste de playlist : URL + extraction
-                self._downloads_view.process_anim.running = True
-                self._downloads_view.log_info("Détection de playlist en cours...")
                 is_playlist = False
                 info = None
                 try:
@@ -329,7 +330,7 @@ class DownloadManager:
                             pass
                     
                     # Arrêter le processus dès la première erreur
-                    self._downloads_view.process_anim.running = False
+                    self._downloads_view.process_anim.stop()
                     return None  # Retourner None pour indiquer une erreur fatale
                 
                 # Créer les tâches
@@ -351,8 +352,10 @@ class DownloadManager:
                 else:
                     print("\nProcessing single item\n")
                     final_output_dir = output_dir
-                    self._downloads_view.process_anim.running = False
                     tasks = [self._task(url, final_output_dir, kind, settings, False)]
+                
+                # Arrêter l'animation de détection
+                self._downloads_view.process_anim.stop()
                 
                 # Notifier le thread principal que les tâches sont prêtes
                 if self._on_tasks_ready:
@@ -362,7 +365,7 @@ class DownloadManager:
                         )
                     
             except Exception as e:
-                self._downloads_view.process_anim.running = False
+                self._downloads_view.process_anim.stop()
                 if self._downloads_view:
                     self._downloads_view.log_error(f"Erreur: {str(e)}")
                 
@@ -868,7 +871,7 @@ class DownloadManager:
         
     def _run_playlist_download(self, task: DownloadTask) -> None:
         """Télécharge toute la playlist d'un seul coup"""
-        self._downloads_view.process_anim.running = True
+        self._downloads_view.process_anim.start()
         try:
             if self._downloads_view:
                 self._downloads_view.log_info(f"Début du téléchargement de playlist: {task.url}")
@@ -967,7 +970,7 @@ class DownloadManager:
         return f"{num_bytes:.1f} {units[i]}"
 
     def _run_download(self, task: DownloadTask) -> None:
-        self._downloads_view.process_anim.running = False
+        self._downloads_view.process_anim.stop()
         try:
             # Vérifier si la tâche a été annulée avant de commencer
             if task.cancelled:

@@ -69,7 +69,6 @@ class Audeo2App(toga.App):
             pass
 
         self._cards: dict[str, DownloadCard] = {}
-        self._final_files: dict[str, Path] = {}
         self._thumb_cache: dict[str, Path] = {}
         self._thumb_inflight: set[str] = set()
 
@@ -392,8 +391,7 @@ class Audeo2App(toga.App):
         card = self._cards.get(progress.task_id)
         if not card:
             return
-        if progress.filename and progress.status == "finished":
-            self._final_files[progress.task_id] = Path(progress.filename)
+                
         if progress.title:
             card.title_label.text = progress.title
         if progress.thumbnail_url:
@@ -465,15 +463,14 @@ class Audeo2App(toga.App):
         if not card:
             return
 
-        final_path = self._final_files.get(task_id)
+        # Utiliser le dossier de destination directement
+        download_dir = Path(self.download_dir)
         size_text = "-"
-        if final_path and final_path.exists():
-            try:
-                size_text = self._fmt_bytes(os.path.getsize(final_path))
-            except OSError:
-                size_text = "-"
+        
+        self.downloads_view.log_info(f"Téléchargement terminé pour: {card.title_label.text}")
 
-        finished_card = FinishedDownloadCard(title=card.title_label.text, size_text=size_text)
+        finished_card = FinishedDownloadCard(title=card.title_label.text, size_text=size_text, file_path=download_dir)
+        finished_card.set_app_reference(self)  # Définir la référence à l'application
         if card.thumb.image is not None:
             finished_card.thumb.image = card.thumb.image
 
@@ -483,7 +480,6 @@ class Audeo2App(toga.App):
             pass
         self.finished_cards_box.add(finished_card)
         self._cards.pop(task_id, None)
-        self._final_files.pop(task_id, None)
         
         # Mettre à jour l'affichage
         self.downloads_view._update_content_display()

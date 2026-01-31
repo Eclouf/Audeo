@@ -29,7 +29,7 @@ class DownloadsView:
         self.kind_select = toga.Selection(items=["video", "audio"], style=Pack(width=130, margin=5))
         self.kind_select.value = "video"
         add_btn = toga.Button("Ajouter", on_press=self.app._on_add, style=Pack(margin=5))
-        self.process_anim = toga.ActivityIndicator(running=False)
+        self.process_anim = toga.ActivityIndicator(running=False, style=Pack(margin=5))
         icons_dir = Path(__file__).resolve().parent.parent / "ressources" / "pictures"
         terminal_icon = toga.Icon(str(icons_dir / "terminal-24.png"))
         terminal_btn = toga.Button(icon=terminal_icon, on_press=self._show_terminal, style=Pack(margin=5))
