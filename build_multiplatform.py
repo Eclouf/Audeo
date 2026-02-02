@@ -115,7 +115,7 @@ def build_windows():
         "--exclude-module", "pip",
         "--exclude-module", "setuptools",
         "--exclude-module", "wheel",
-        "--exclude-module", "distutils",
+        #"--exclude-module", "distutils",
         "--add-data", f"{root}/src/audeo2/ressources{os.pathsep}audeo2/ressources",
         "audeo_runner.py"
     ]

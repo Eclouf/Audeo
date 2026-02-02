@@ -521,7 +521,7 @@ def main() -> Audeo2App:
         formal_name="Audeo-2",
         app_id="com.audeo.audeo2",
         app_name="Audeo-2",
-        version="0.1.0",
+        version="0.2.0",
         author="Eclouf",
         description=DESCRIPTION,
         icon="ressources/audeo.png",
