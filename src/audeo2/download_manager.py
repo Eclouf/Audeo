@@ -13,9 +13,10 @@ from typing import Callable, Optional
 from urllib.parse import urlparse, urlunparse
 
 import yt_dlp
+import toga
 
 from .settings import AppSettings
-
+from .views import DownloadsView
 
 class YdlLogHandler(logging.Handler):
     """Handler personnalisé pour rediriger les logs yt-dlp vers le terminal"""
@@ -102,18 +103,26 @@ class DownloadManager:
         on_finished: Callable[[str], None],
         on_error: Callable[[str, Exception], None],
         downloads_view=None,
+        main_window=None,
+        on_tasks_ready: Optional[Callable[[list], None]] = None,
     ) -> None:
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
         self._on_progress = on_progress
         self._on_finished = on_finished
         self._on_error = on_error
         self._downloads_view = downloads_view
+        self._main_window = main_window
+        self._on_tasks_ready = on_tasks_ready
         self._lock = threading.Lock()
         self._tasks: dict[str, DownloadTask] = {}
         
         # Configurer le logger yt-dlp une seule fois
         self._logger = logging.getLogger("yt_dlp")
         self._logger.setLevel(logging.DEBUG)
+        
+        # Utiliser la vue de téléchargement existante
+        if downloads_view is None:
+            raise ValueError("downloads_view est requis pour DownloadManager")
         
         # Créer un handler personnalisé pour rediriger vers le terminal
         self._ydl_handler = None
@@ -259,74 +268,144 @@ class DownloadManager:
 
     def submit(self, *, url: str, output_dir: Path, kind: str, settings: AppSettings) -> list[DownloadTask]:
         """Télécharge une URL ou une playlist complète"""
-        try:
-            # Détection robuste de playlist : URL + extraction
-            is_playlist = False
-            print("\n Testing playlist detection...\n")
+        # Démarrer l'animation immédiatement dans le thread principal
+        self._downloads_view.process_anim.start()
+        self._downloads_view.log_info("Détection de playlist en cours...")
+        
+        # Lancer la détection dans un thread séparé pour ne pas bloquer l'interface
+        import threading
+        
+        def _detect_and_submit():
             try:
-                # 1. Détection par analyse d'URL avec urllib
-                is_playlist = self._detect_playlist_by_url(url)
-                options = self._prepare_base_options(settings)
-                options['quiet'] = True
-                options['extract_flat'] = True
+                is_playlist = False
+                info = None
+                try:
+                    # 1. Détection par analyse d'URL avec urllib
+                    is_playlist = self._detect_playlist_by_url(url)
+                    options = self._prepare_base_options(settings)
+                    options['quiet'] = True
+                    options['extract_flat'] = True
+                    
+                    # 2. Extraction complète pour confirmation avec yt-dlp
+                    with yt_dlp.YoutubeDL(options) as ydl:
+                        info = ydl.extract_info(url, download=False)
+                        
+                        # Confirmer avec les métadonnées yt-dlp
+                        ytdl_is_playlist = (
+                            info.get("ie_key") == "Playlist" or 
+                            info.get('_type') == 'playlist' or 
+                            info.get('playlist_count', 0) > 0 or
+                            'entries' in info
+                        )
+                        # Utiliser la détection yt-dlp si elle est positive, sinon garder l'analyse d'URL
+                        is_playlist = is_playlist or ytdl_is_playlist
+                        
+                    if is_playlist:
+                        detection_method = "yt-dlp" if ytdl_is_playlist else "URL analysis"
+                        self._downloads_view.log_info(f"URL détectée comme une playlist ({detection_method}): {url}")
+                        print(f"Playlist detected by {detection_method}")
+                    else:
+                        print("not playlist")
+                        
+                except Exception as e:
+                    # Erreur de détection - logger simplement et arrêter
+                    self._downloads_view.log_error(f"Erreur de détection: {str(e)}")
+                    
+                    # Afficher une fenêtre de dialogue d'erreur simple
+                    if self._main_window:
+                        try:
+                            # Utiliser une approche plus simple qui fonctionne dans les threads
+                            import asyncio
+                            dialog = toga.ErrorDialog(
+                                title="Erreur de détection",
+                                message=f"Erreur lors de la détection de playlist:\n\n{str(e)}\n\nArrêt du processus."
+                            )
+                            # Planifier l'affichage du dialogue sur le thread principal
+                            if hasattr(self._main_window, 'app') and hasattr(self._main_window.app, 'loop'):
+                                self._main_window.app.loop.call_soon_threadsafe(
+                                    lambda: asyncio.create_task(self._main_window.dialog(dialog))
+                                )
+                        except Exception:
+                            # En cas d'erreur avec le dialogue, juste logger
+                            pass
+                    
+                    # Arrêter le processus dès la première erreur
+                    self._downloads_view.process_anim.stop()
+                    return None  # Retourner None pour indiquer une erreur fatale
                 
-                # 2. Extraction complète pour confirmation avec yt-dlp
-                with yt_dlp.YoutubeDL(options) as ydl:
-                    info = ydl.extract_info(url, download=False)
-                    print("\n INFO LIST\n" + str(info) + "\n")
-                    
-                    # Confirmer avec les métadonnées yt-dlp
-                    ytdl_is_playlist = (
-                        info.get("ie_key") == "Playlist" or 
-                        info.get('_type') == 'playlist' or 
-                        info.get('playlist_count', 0) > 0 or
-                        'entries' in info
-                    )
-                    print("\nfin\n")
-                    # Utiliser la détection yt-dlp si elle est positive, sinon garder l'analyse d'URL
-                    is_playlist = is_playlist or ytdl_is_playlist
-                    
-                if is_playlist:
-                    detection_method = "yt-dlp" if ytdl_is_playlist else "URL analysis"
-                    self._downloads_view.log_info(f"URL détectée comme une playlist ({detection_method}): {url}")
-                    print(f"Playlist detected by {detection_method}")
+                # Créer les tâches
+                tasks = []
+                if is_playlist and settings.general.download_playlist:
+                    print("\nProcessing playlist\n")
+                    self._downloads_view.log_info("Processing playlist")
+                    self._downloads_view.log_info(f"Items number: {info.get('playlist_count', 0)}")
+                    if settings.general.download_playlist and settings.general.playlist_folder_name.strip():
+                        playlist_folder_name = settings.general.playlist_folder_name.strip()
+                        final_output_dir = output_dir / playlist_folder_name
+                        self._downloads_view.log_info(f"Dossier playlist: {final_output_dir}")
+                        
+                    elif settings.general.download_playlist:
+                        final_output_dir = output_dir
+                        self._downloads_view.log_info(f"Dossier playlist: {final_output_dir}")
+                        
+                    tasks = [self._task(url, final_output_dir, kind, settings, True)]
                 else:
-                    print("not playlist")
+                    print("\nProcessing single item\n")
+                    final_output_dir = output_dir
+                    tasks = [self._task(url, final_output_dir, kind, settings, False)]
+                
+                # Arrêter l'animation de détection
+                self._downloads_view.process_anim.stop()
+                
+                # Notifier le thread principal que les tâches sont prêtes
+                if self._on_tasks_ready:
+                    if hasattr(self._main_window, 'app') and hasattr(self._main_window.app, 'loop'):
+                        self._main_window.app.loop.call_soon_threadsafe(
+                            lambda: self._on_tasks_ready(tasks)
+                        )
                     
             except Exception as e:
-                print(f"Detection error: {e}")
-                # Fallback basé sur l'URL seule avec urllib
-                is_playlist = self._detect_playlist_by_url(url)
-                if is_playlist:
-                    self._downloads_view.log_info(f"URL détectée comme playlist (URL analysis fallback): {url}")
-                    print("Playlist detected (URL fallback)")
-                else:
-                    print("not playlist")
-            
-            if is_playlist and settings.general.download_playlist:
-                print("\nProcessing playlist\n")
-                self._downloads_view.log_info("Processing playlist")
-                self._downloads_view.log_info(f"Items number: {info.get('playlist_count', 0)}")
-                if settings.general.download_playlist and settings.general.playlist_folder_name.strip():
-                    playlist_folder_name = settings.general.playlist_folder_name.strip()
-                    final_output_dir = output_dir / playlist_folder_name
-                    self._downloads_view.log_info(f"Dossier playlist: {final_output_dir}")
-                    
-                elif settings.general.download_playlist:
-                    final_output_dir = output_dir
-                    self._downloads_view.log_info(f"Dossier playlist: {final_output_dir}")
-                    
-                return [self._task(url, final_output_dir, kind, settings, True)]
-            else:
-                print("\nProcessing single item\n")
-                final_output_dir = output_dir
-                return [self._task(url, final_output_dir, kind, settings, False)]
-              
-        except Exception as e:
-            if self._downloads_view:
-                self._downloads_view.log_error(f"Erreur: {str(e)}")
-            # Fallback: traiter comme une vidéo normale
-            return [self._task(url, output_dir, kind, settings)]
+                self._downloads_view.process_anim.stop()
+                if self._downloads_view:
+                    self._downloads_view.log_error(f"Erreur: {str(e)}")
+                
+                # Afficher une fenêtre de dialogue d'erreur simple
+                if self._main_window:
+                    try:
+                        import asyncio
+                        dialog = toga.ErrorDialog(
+                            title="Erreur lors de la soumission",
+                            message=f"Erreur lors de la préparation du téléchargement:\n\n{str(e)}\n\nArrêt du processus."
+                        )
+                        # Planifier l'affichage du dialogue sur le thread principal
+                        if hasattr(self._main_window, 'app') and hasattr(self._main_window.app, 'loop'):
+                            self._main_window.app.loop.call_soon_threadsafe(
+                                lambda: asyncio.create_task(self._main_window.dialog(dialog))
+                            )
+                    except Exception:
+                        # En cas d'erreur avec le dialogue, juste logger
+                        pass
+                
+                # Arrêter le processus dès la première erreur
+                if self._on_tasks_ready:
+                    if hasattr(self._main_window, 'app') and hasattr(self._main_window.app, 'loop'):
+                        self._main_window.app.loop.call_soon_threadsafe(
+                            lambda: self._on_tasks_ready(None)
+                        )
+        
+        # Lancer la détection dans un thread séparé
+        thread = threading.Thread(target=_detect_and_submit, daemon=True)
+        thread.start()
+        
+        # Retourner immédiatement une liste vide pour ne pas bloquer
+        # Les vraies tâches seront créées de manière asynchrone
+        return []
+    
+    def _on_tasks_ready(self, tasks):
+        """Callback appelé quand les tâches sont prêtes"""
+        # Cette méthode sera appelée depuis le thread principal
+        # On peut déclencher un événement ou notifier l'application
+        pass
         
     def _task(self, original_url: str, output_dir: Path, kind: str, settings: AppSettings, playlist: bool) -> DownloadTask:
         """
@@ -792,6 +871,7 @@ class DownloadManager:
         
     def _run_playlist_download(self, task: DownloadTask) -> None:
         """Télécharge toute la playlist d'un seul coup"""
+        self._downloads_view.process_anim.start()
         try:
             if self._downloads_view:
                 self._downloads_view.log_info(f"Début du téléchargement de playlist: {task.url}")
@@ -890,6 +970,7 @@ class DownloadManager:
         return f"{num_bytes:.1f} {units[i]}"
 
     def _run_download(self, task: DownloadTask) -> None:
+        self._downloads_view.process_anim.stop()
         try:
             # Vérifier si la tâche a été annulée avant de commencer
             if task.cancelled:

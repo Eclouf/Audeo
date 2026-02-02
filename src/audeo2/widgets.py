@@ -230,20 +230,132 @@ class DownloadCard(toga.Box):
 
 
 class FinishedDownloadCard(toga.Box):
-    def __init__(self, *, title: str, size_text: str) -> None:
-        super().__init__(style=toga.style.Pack(direction="row", margin=10))
+    def __init__(self, *, title: str, size_text: str, file_path: Optional[Path] = None) -> None:
+        super().__init__(style=toga.style.Pack(direction="row", margin=2, background_color="#888888"))
 
         default_path = Path(__file__).resolve().parent / "ressources" / "default-200.png"
         self._default_image = toga.Image(str(default_path))
+        self.file_path = file_path  # Stocker le chemin du fichier
 
-        self.thumb = toga.ImageView(style=toga.style.Pack(width=120, height=68, margin_right=10))
+        self.thumb = toga.ImageView(style=toga.style.Pack(width=120, height=68, margin=(5, 5, 5, 5)))
         self.thumb.image = self._default_image
         self.title_label = toga.Label(title, style=toga.style.Pack(font_size=12, font_weight="bold"))
         self.size_label = toga.Label(size_text, style=toga.style.Pack(margin_top=4))
 
-        right = toga.Box(style=toga.style.Pack(direction="column", flex=1))
+        right = toga.Box(style=toga.style.Pack(direction="column", margin=(5, 5, 5, 5)))
         right.add(self.title_label)
         right.add(self.size_label)
+        
+        file_button = toga.Button("Fichier", on_press=self._show_file)
+        r_right = toga.Box(style=toga.style.Pack(direction="column", margin=(5, 5, 5, 5)))
+        r_right.add(file_button)
+        
+        main_container = toga.Box(
+            children=[self.thumb, right, r_right],
+            style=toga.style.Pack(
+                direction="row", 
+                margin=1.5, 
+                background_color="#f0f0f0", #couleur de fond
+                flex=1
+            )
+        )
 
-        self.add(self.thumb)
-        self.add(right)
+        self.add(main_container)
+        self.app = None  # Sera défini par l'application
+
+    def set_app_reference(self, app) -> None:
+        """Définit la référence à l'application principale"""
+        self.app = app
+
+    def _show_file(self, widget: toga.Button) -> None:
+        """Ouvre le dossier de destination dans l'explorateur système"""
+        if self.file_path and self.file_path.exists():
+            try:
+                import os
+                import subprocess
+                import platform
+                
+                system = platform.system()
+                
+                if system == "Windows":
+                    # Windows : ouvre l'explorateur sur le dossier
+                    os.startfile(str(self.file_path))
+                elif system == "Darwin":  # macOS
+                    # macOS : ouvre Finder sur le dossier
+                    subprocess.run(["open", str(self.file_path)], check=True)
+                elif system == "Linux":
+                    # Linux : essaie différentes méthodes avec meilleure gestion d'erreur
+                    success = False
+                    
+                    # Liste des gestionnaires de fichiers à essayer
+                    file_managers = [
+                        ("nautilus", "GNOME"),
+                        ("dolphin", "KDE"), 
+                        ("thunar", "XFCE"),
+                        ("pcmanfm", "LXDE"),
+                        ("caja", "MATE"),
+                        ("nemo", "Cinnamon")
+                    ]
+                    
+                    for fm, desktop in file_managers:
+                        try:
+                            subprocess.run([fm, str(self.file_path)], check=True, timeout=5)
+                            success = True
+                            break
+                        except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+                            continue
+                    
+                    # Si aucun gestionnaire de fichiers n'a fonctionné, essayer xdg-open
+                    if not success:
+                        try:
+                            subprocess.run(["xdg-open", str(self.file_path)], check=True, timeout=5)
+                            success = True
+                        except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+                            pass
+                    
+                    # Si tout a échoué, essayer d'ouvrir avec le navigateur de fichiers par défaut
+                    if not success:
+                        try:
+                            # Utiliser python-magic pour détecter le type ou fallback simple
+                            import webbrowser
+                            webbrowser.open(f"file://{self.file_path}")
+                            success = True
+                        except Exception:
+                            pass
+                else:
+                    # Système non supporté : fallback vers xdg-open
+                    subprocess.run(["xdg-open", str(self.file_path)], check=True)
+                    
+            except Exception as e:
+                # En cas d'erreur, affiche un message d'erreur informatif
+                import toga
+                system = platform.system()
+                
+                if system == "Linux":
+                    error_msg = f"Impossible d'ouvrir le dossier:\n\n{str(e)}\n\nDossier: {self.file_path}\n\n" \
+                             "Solutions possibles:\n" \
+                             "1. Installer xdg-utils: sudo apt install xdg-utils (Ubuntu/Debian)\n" \
+                             "2. Installer votre gestionnaire de fichiers: sudo apt install nautilus (GNOME)\n" \
+                             "3. Ou naviguez manuellement vers: {self.file_path}"
+                else:
+                    error_msg = f"Impossible d'ouvrir le dossier:\n\n{str(e)}\n\nDossier: {self.file_path}"
+                
+                dialog = toga.InfoDialog(
+                    title="Erreur",
+                    message=error_msg
+                )
+                # Créer une tâche async pour le dialogue
+                import asyncio
+                if hasattr(self, 'app') and hasattr(self.app, 'main_window'):
+                    asyncio.create_task(self.app.main_window.dialog(dialog))
+        else:
+            # Dossier introuvable
+            import toga
+            dialog = toga.InfoDialog(
+                title="Dossier introuvable",
+                message=f"Le dossier n'existe plus:\n\n{self.file_path}"
+            )
+            # Créer une tâche async pour le dialogue
+            import asyncio
+            if hasattr(self, 'app') and hasattr(self.app, 'main_window'):
+                asyncio.create_task(self.app.main_window.dialog(dialog))

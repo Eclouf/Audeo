@@ -14,7 +14,7 @@ from pathlib import Path
 def get_version_info():
     """Retourne les informations de version communes"""
     return {
-        'version': '0.1.0',
+        'version': '0.2.0',
         'name': 'Audeo-2',
         'company': 'Eclouf',
         'description': 'Audeo is a user-friendly application for downloading audio and video content from various online sources',
@@ -115,7 +115,7 @@ def build_windows():
         "--exclude-module", "pip",
         "--exclude-module", "setuptools",
         "--exclude-module", "wheel",
-        "--exclude-module", "distutils",
+        #"--exclude-module", "distutils",
         "--add-data", f"{root}/src/audeo2/ressources{os.pathsep}audeo2/ressources",
         "audeo_runner.py"
     ]
