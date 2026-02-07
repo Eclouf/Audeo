@@ -1,0 +1,639 @@
+# Audeo2 Translation
+# Copyright (C) 2025
+# This file is distributed under the same license as audeo2 package.
+# Eclouf, 2025.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: audeo2 0.2.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-02-07 00:00+0000\n"
+"PO-Revision-Date: 2025-02-07 00:00+0000\n"
+"Last-Translator: Audeo2 Team\n"
+"Language-Team: Polish\n"
+"Language: pl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+##################################################################
+# Interface principale
+##################################################################
+msgid "French"
+msgstr "Francuski"
+
+msgid "English"
+msgstr "Angielski"
+
+# Onglets principaux
+msgid "Downloads"
+msgstr "Pobieranie"
+
+msgid "Finished"
+msgstr "Ukończone"
+
+msgid "Video Info"
+msgstr "Informacje o wideo"
+
+msgid "Settings"
+msgstr "Ustawienia"
+
+# Settings
+msgid "General"
+msgstr "Ogólne"
+
+msgid "Metadata"
+msgstr "Metadane"
+
+msgid "Audio"
+msgstr "Audio"
+
+msgid "Video"
+msgstr "Wideo"
+
+msgid "Apply all"
+msgstr "Zastosuj wszystko"
+
+msgid "Import"
+msgstr "Importuj"
+
+msgid "Export"
+msgstr "Eksportuj"
+
+##################################################################
+# Messages de dialogue
+##################################################################
+msgid "Import settings"
+msgstr "Importuj ustawienia"
+
+msgid "Export settings"
+msgstr "Eksportuj ustawienia"
+
+msgid "Settings imported successfully"
+msgstr "Ustawienia zaimportowane pomyślnie"
+
+msgid "Settings exported successfully"
+msgstr "Ustawienia wyeksportowane pomyślnie"
+
+msgid "Error importing settings"
+msgstr "Błąd importowania ustawień"
+
+msgid "Error exporting settings"
+msgstr "Błąd eksportowania ustawień"
+
+msgid "Invalid URL"
+msgstr "URL nieprawidłowy"
+
+msgid "Please enter a valid URL http(s)"
+msgstr "Wprowadź poprawny URL http(s)."
+
+##################################################################
+# Downloads
+##################################################################
+msgid "Download"
+msgstr "Pobierz"
+
+msgid "Download video"
+msgstr "Pobierz wideo"
+
+msgid "Download audio"
+msgstr "Pobierz audio"
+
+msgid "URL"
+msgstr "URL"
+
+msgid "Quality"
+msgstr "Jakość"
+
+msgid "Format"
+msgstr "Format"
+
+msgid "Progress"
+msgstr "Postęp"
+
+msgid "Cancel"
+msgstr "Anuluj"
+
+msgid "Clear finished"
+msgstr "Wyczyść ukończone"
+
+msgid "No downloads in progress"
+msgstr "Brak pobierań w toku"
+
+msgid "No finished downloads"
+msgstr "Brak ukończonych pobrań"
+
+##################################################################
+# Terminal
+##################################################################
+msgid "Terminal"
+msgstr "Terminal"
+
+msgid "Terminal - Real-time output"
+msgstr "Terminal - Wyjście w czasie rzeczywistym"
+
+msgid "Clear"
+msgstr "Wyczyść"
+
+msgid "Refresh"
+msgstr "Odśwież"
+
+msgid "Close"
+msgstr "Zamknij"
+
+# Messages de log du terminal
+msgid "yt-dlp: {}"
+msgstr "yt-dlp: {}"
+
+msgid "Download {} marked for cancellation"
+msgstr "Pobieranie {} oznaczone do anulowania"
+
+msgid "Download {} paused"
+msgstr "Pobieranie {} wstrzymane"
+
+msgid "Download {} resumed"
+msgstr "Pobieranie {} wznowione"
+
+msgid "URL detection in progress..."
+msgstr "Wykrywanie playlisty w toku..."
+
+msgid "URL detected as playlist ({}): {}"
+msgstr "URL wykryto jako playlistę ({}): {}"
+
+msgid "Detection error: {}"
+msgstr "Błąd wykrywania: {}"
+
+msgid "Items number: {}"
+msgstr "Liczba elementów: {}"
+
+msgid "Playlist folder: {}"
+msgstr "Folder playlisty: {}"
+
+msgid "Error: {}"
+msgstr "Błąd: {}"
+
+msgid "Playlist detected: {}"
+msgstr "Wykryto playlistę: {}"
+
+msgid "Items: {}"
+msgstr "Elementy: {}"
+
+msgid "Thumbnail available"
+msgstr "Miniatura dostępna"
+
+msgid "No thumbnail available"
+msgstr "Brak dostępnej miniatury"
+
+msgid "Single video detected: {}"
+msgstr "Wykryto pojedyncze wideo: {}"
+
+msgid "Title: {}"
+msgstr "Tytuł: {}"
+
+msgid "Thumbnail: {}"
+msgstr "Miniatura: {}"
+
+msgid "Estimated size: {}"
+msgstr "Szacowany rozmiar: {}"
+
+msgid "Size: will be calculated in real time"
+msgstr "Rozmiar: zostanie obliczony w czasie rzeczywistym"
+
+msgid "Filename template converted: {} -> {}"
+msgstr "Szablon nazwy pliku przekonwertowany: {} -> {}"
+
+msgid "Custom format: {}"
+msgstr "Format niestandardowy: {}"
+
+msgid "Preferred audio codec: {}"
+msgstr "Preferowany kodek audio: {}"
+
+msgid "Audio extension: {}"
+msgstr "Rozszerzenie audio: {}"
+
+msgid "Preferred video codec: {}"
+msgstr "Preferowany kodek wideo: {}"
+
+msgid "Video extension: {}"
+msgstr "Rozszerzenie wideo: {}"
+
+msgid "Subtitles enabled"
+msgstr "Napisy włączone"
+
+msgid "Chapters enabled"
+msgstr "Rozdziały włączone"
+
+msgid "Metadata added"
+msgstr "Metadane dodane"
+
+msgid "Custom metadata: {}"
+msgstr "Niestandardowe metadane: {}"
+
+msgid "Parse metadata enabled"
+msgstr "Parse metadanych włączony"
+
+msgid "Parse metadata rules: {}"
+msgstr "Zasady parse metadanych: {}"
+
+msgid "Download rate limit: {} KiB/s"
+msgstr "Limit prędkości pobierania: {} KiB/s"
+
+msgid "Concurrent fragments: {}"
+msgstr "Jednoczesne fragmenty: {}"
+
+msgid "Thumbnail addition enabled"
+msgstr "Dodawanie miniatury włączone"
+
+msgid "Overwrite existing files enabled"
+msgstr "Nadpisywanie istniejących plików włączone"
+
+msgid "Starting download: {}"
+msgstr "Rozpoczynianie pobierania: {}"
+
+msgid "Download completed: {}"
+msgstr "Pobieranie ukończone: {}"
+
+msgid "Download cancelled: {}"
+msgstr "Pobieranie anulowane: {}"
+
+msgid "Download failed: {} - {}"
+msgstr "Pobieranie nie powiodło się: {} - {}"
+
+msgid "File already exists: {}"
+msgstr "Plik już istnieje: {}"
+
+msgid "Cannot write file: {}"
+msgstr "Nie można zapisać pliku: {}"
+
+msgid "Insufficient disk space"
+msgstr "Niewystarczająca ilość miejsca na dysku"
+
+msgid "Network error"
+msgstr "Błąd sieci"
+
+msgid "Authentication required"
+msgstr "Wymagana autentykacja"
+
+msgid "Video not available"
+msgstr "Wideo niedostępne"
+
+msgid "Private video"
+msgstr "Prywatne wideo"
+
+msgid "Region restricted"
+msgstr "Ograniczone regionalnie"
+
+msgid "Age restricted"
+msgstr "Ograniczone wiekowo"
+
+# Messages de dialogue d'erreur
+msgid "Detection error"
+msgstr "Błąd wykrywania"
+
+msgid "Error during playlist detection:\n\n{}\n\nProcess stopped."
+msgstr "Błąd podczas wykrywania playlisty:\n\n{}\n\nProces zatrzymany."
+
+msgid "Submission error"
+msgstr "Błąd przesyłania"
+
+msgid "Error during download preparation:\n\n{}\n\nProcess stopped."
+msgstr "Błąd podczas przygotowywania pobierania:\n\n{}\n\nProces zatrzymany."
+
+# Messages d'état et de progression
+msgid "{} - Completed"
+msgstr "{} - Ukończone"
+
+msgid "Playlist - {}"
+msgstr "Playlista - {}"
+
+msgid "Downloading"
+msgstr "Pobieranie"
+
+msgid "Completed: {}"
+msgstr "Ukończone: {}"
+
+# Messages d'erreur de téléchargement
+msgid "Playlist download error: {}"
+msgstr "Błąd pobierania playlisty: {}"
+
+msgid "Original URL: {}"
+msgstr "Oryginalny URL: {}"
+
+msgid "Directory: {}"
+msgstr "Katalog: {}"
+
+msgid "Download {} cancelled successfully"
+msgstr "Pobieranie {} anulowane pomyślnie"
+
+msgid "Download error: {}"
+msgstr "Błąd pobierania: {}"
+
+msgid "URL: {}"
+msgstr "URL: {}"
+
+# Messages de configuration et de traitement
+msgid "Error in YdlLogHandler.emit: {}"
+msgstr "Błąd w YdlLogHandler.emit: {}"
+
+msgid "Error during URL analysis: {}"
+msgstr "Błąd podczas analizy URL: {}"
+
+msgid "Playlist detected by {}"
+msgstr "Wykryto playlistę przez {}"
+
+msgid "not playlist"
+msgstr "nie jest playlistą"
+
+msgid "Processing playlist"
+msgstr "Przetwarzanie playlisty"
+
+msgid "Processing single item"
+msgstr "Przetwarzanie pojedynczego elementu"
+
+msgid "Audio: Best automatic quality"
+msgstr "Audio: Najlepsza jakość automatyczna"
+
+msgid "Parsing metadata: Enabled"
+msgstr "Parsowanie metadanych: Włączone"
+
+msgid "Raw rules: {}"
+msgstr "Surowe zasady: {}"
+
+msgid "Metadata FFmpeg: Enabled"
+msgstr "Metadane FFmpeg: Włączone"
+
+msgid "Thumbnail: Enabled"
+msgstr "Miniatura: Włączona"
+
+msgid "Square thumbnail: Enabled (audio)"
+msgstr "Kwadratowa miniatura: Włączona (audio)"
+
+msgid "Subtitles: Enabled (all languages)"
+msgstr "Napisy: Włączone (wszystkie języki)"
+
+msgid "Chapters: Enabled"
+msgstr "Rozdziały: Włączone"
+
+msgid "Playlist completed successfully!"
+msgstr "Playlista ukończona pomyślnie!"
+
+msgid "Download completed successfully!"
+msgstr "Pobieranie ukończone pomyślnie!"
+
+msgid "Parameters: overwrite={}, rate_limit={}KiB/s"
+msgstr "Parametry: overwrite={}, rate_limit={}KiB/s"
+
+msgid "Output directory verified: {}"
+msgstr "Katalog wyjściowy zweryfikowany: {}"
+
+msgid "yt-dlp options configured:"
+msgstr "Opcje yt-dlp skonfigurowane:"
+
+msgid "   - Format: {}"
+msgstr "   - Format: {}"
+
+msgid "   - Template: {}"
+msgstr "   - Szablon: {}"
+
+msgid "   - Postprocessors: {} configured"
+msgstr "   - Postprocesory: {} skonfigurowane"
+
+msgid "Launching download with yt-dlp..."
+msgstr "Uruchamianie pobierania z yt-dlp..."
+
+msgid "info"
+msgstr "info"
+
+msgid "playlist"
+msgstr "playlist"
+
+msgid "Download cancelled before extraction"
+msgstr "Pobieranie anulowane przed ekstrakcją"
+
+msgid "Processing playlist options"
+msgstr "Przetwarzanie opcji playlisty"
+
+msgid "Processing single item option"
+msgstr "Przetwarzanie opcji pojedynczego elementu"
+
+##################################################################
+# Video Info
+##################################################################
+msgid "Title"
+msgstr "Tytuł"
+
+msgid "Duration"
+msgstr "Czas trwania"
+
+msgid "Views"
+msgstr "Wyświetlenia"
+
+msgid "Uploader"
+msgstr "Przesyłający"
+
+msgid "Upload date"
+msgstr "Data przesłania"
+
+msgid "Description"
+msgstr "Opis"
+
+msgid "No video information"
+msgstr "Brak informacji o wideo"
+
+msgid "Enter video URL"
+msgstr "Wprowadź URL wideo"
+
+msgid "Get video info"
+msgstr "Pobierz informacje o wideo"
+
+msgid "Available formats"
+msgstr "Dostępne formaty"
+
+msgid "Error"
+msgstr "Błąd"
+
+msgid "Format error"
+msgstr "Błąd formatu"
+
+msgid "Please analyze a video first"
+msgstr "Proszę najpierw przeanalizować wideo"
+
+msgid "URL not available"
+msgstr "URL niedostępny"
+
+msgid "The selected file is not a valid JSON file."
+msgstr "Wybrany plik nie jest prawidłowym plikiem JSON."
+
+##################################################################
+# Finished Downloads
+##################################################################
+msgid "Finished downloads"
+msgstr "Ukończone pobierania"
+
+msgid "Clear history"
+msgstr "Wyczyść historię"
+
+##################################################################
+# Messages système
+##################################################################
+msgid "Language changed"
+msgstr "Język zmieniony"
+
+msgid "Language changed to {} ({})"
+msgstr "Język zmieniony na {} ({})"
+
+##################################################################
+# Settings - General
+##################################################################
+msgid "Choose…"
+msgstr "Wybierz…"
+
+msgid "Download directory"
+msgstr "Katalog pobierania"
+
+msgid "Output template"
+msgstr "Szablon nazwy pliku"
+
+msgid "Output format"
+msgstr "Format wyjściowy"
+
+msgid "Overwrite existing files"
+msgstr "Nadpisuj istniejące pliki"
+
+msgid "Limit download rate"
+msgstr "Ogranicz prędkość pobierania"
+
+msgid "Simultaneous download fragments"
+msgstr "Jednoczesne fragmenty pobierania"
+
+msgid "Add thumbnail"
+msgstr "Dodaj miniaturę"
+
+msgid "Download playlist"
+msgstr "Pobierz playlistę"
+
+msgid "Playlist folder name"
+msgstr "Nazwa folderu playlisty"
+
+msgid "Proxy URL"
+msgstr "URL proxy"
+
+msgid "Choose destination folder"
+msgstr "Wybierz folder docelowy"
+
+##################################################################
+# Settings - Metadata
+##################################################################
+msgid "Add metadata"
+msgstr "Dodaj metadane"
+
+msgid "Custom metadata (key=value)"
+msgstr "Niestandardowe metadane (klucz=wartość)"
+
+msgid "Detect metadata (parse-metadata)"
+msgstr "Wykryj metadane (parse-metadata)"
+
+msgid "Parse-metadata rules (1 per line)"
+msgstr "Zasady parse-metadata (1 na linię)"
+
+msgid "Open settings folder"
+msgstr "Otwórz folder ustawień"
+
+##################################################################
+# Settings - Audio
+##################################################################
+msgid "Preferred codec"
+msgstr "Preferowany kodek"
+
+msgid "Extension / container"
+msgstr "Rozszerzenie / kontener"
+
+msgid "Square thumbnail"
+msgstr "Kwadratowa miniatura"
+
+##################################################################
+# Settings - Video
+##################################################################
+msgid "Subtitles"
+msgstr "Napisy"
+
+msgid "Chapters"
+msgstr "Rozdziały"
+
+##################################################################
+# Templates et placeholders
+##################################################################
+msgid "%(title)s.%(ext)s"
+msgstr "%(title)s.%(ext)s"
+
+msgid "%(album,playlist_title)s/"
+msgstr "%(album,playlist_title)s/"
+
+##################################################################
+# Messages supplémentaires pour les vues
+##################################################################
+msgid "URL ..."
+msgstr "URL ..."
+
+msgid "video"
+msgstr "wideo"
+
+msgid "audio"
+msgstr "audio"
+
+msgid "Add"
+msgstr "Dodaj"
+
+msgid "Analyze"
+msgstr "Analizuj"
+
+msgid "Resolution"
+msgstr "Rozdzielczość"
+
+msgid "Codec"
+msgstr "Kodek"
+
+msgid "Size"
+msgstr "Rozmiar"
+
+msgid "FPS"
+msgstr "FPS"
+
+msgid "Enter video URL..."
+msgstr "Wprowadź URL wideo..."
+
+msgid "Destination folder"
+msgstr "Folder docelowy"
+
+##################################################################
+# Messages d'import/export étendus
+##################################################################
+msgid "Settings imported successfully\n\nAll settings have been applied."
+msgstr "Ustawienia zaimportowane pomyślnie\n\nWszystkie ustawienia zostały zastosowane."
+
+msgid "Unable to import settings"
+msgstr "Nie można zaimportować ustawień"
+
+msgid "Unable to import settings:\n{}"
+msgstr "Nie można zaimportować ustawień:\n{}"
+
+msgid "Settings exported successfully\n\nFile saved to: {}"
+msgstr "Ustawienia wyeksportowane pomyślnie\n\nPlik zapisany do: {}"
+
+msgid "Unable to export settings"
+msgstr "Nie można wyeksportować ustawień"
+
+msgid "Unable to export settings:\n{}"
+msgstr "Nie można wyeksportować ustawień:\n{}"
+
+##################################################################
+# Placeholders pour les formulaires
+##################################################################
+msgid "http://proxy.example.com:8080"
+msgstr "http://proxy.example.com:8080"
+
+msgid "username"
+msgstr "nazwaużytkownika"
+
+msgid "password"
+msgstr "hasło"

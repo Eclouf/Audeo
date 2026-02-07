@@ -8,6 +8,7 @@ from typing import Any, Optional
 
 @dataclass(slots=True)
 class GeneralSettings:
+    lang_code: str = "fr"
     download_dir: Optional[str] = None
     output_format: str = ""  # texte libre (interprété comme format yt-dlp si non vide)
     output_template: str = "%(title)s [%(id)s].%(ext)s"
@@ -71,6 +72,7 @@ def load_settings(config_dir: Path) -> AppSettings:
 
     settings = AppSettings(
         general=GeneralSettings(
+            lang_code=_get(g, "lang_code", "fr"),
             download_dir=_get(g, "download_dir", None),
             output_format=str(_get(g, "output_format", "") or ""),
             output_template=str(_get(g, "output_template", "%(title)s [%(id)s].%(ext)s")),
