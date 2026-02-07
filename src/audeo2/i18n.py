@@ -97,7 +97,13 @@ class I18nManager:
         # Langues supportées
         supported = {
             "fr": "Français",
-            "en": "English"
+            "en": "English",
+            "es": "Español",
+            "it": "Italiano",
+            "pt": "Português",
+            "pl": "Polski",
+            "ru": "Русский",
+            "de": "Deutsch"
         }
         
         for code, name in supported.items():
@@ -123,7 +129,7 @@ class I18nManager:
     
     def create_language_files(self, lang_code: str) -> None:
         """Crée les fichiers de traduction pour une nouvelle langue"""
-        if lang_code not in ["fr", "en"]:
+        if lang_code not in ["fr", "en", "es", "it", "pt", "pl", "ru", "de"]:
             print(f"Langue '{lang_code}' non supportée")
             return
         
@@ -145,7 +151,16 @@ class I18nManager:
     
     def _get_po_template(self, lang_code: str) -> str:
         """Génère un template de fichier .po"""
-        language_names = {"fr": "French", "en": "English"}
+        language_names = {
+            "fr": "French", 
+            "en": "English",
+            "es": "Spanish",
+            "it": "Italian",
+            "pt": "Portuguese",
+            "pl": "Polish",
+            "ru": "Russian",
+            "de": "German"
+        }
         
         return f'''# Audeo2 Translation
 # Copyright (C) 2025
