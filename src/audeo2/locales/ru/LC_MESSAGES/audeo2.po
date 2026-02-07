@@ -1,0 +1,639 @@
+# Audeo2 Translation
+# Copyright (C) 2025
+# This file is distributed under the same license as audeo2 package.
+# Eclouf, 2025.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: audeo2 0.3.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2025-02-07 00:00+0000\n"
+"PO-Revision-Date: 2025-02-07 00:00+0000\n"
+"Last-Translator: Audeo2 Team\n"
+"Language-Team: Russian\n"
+"Language: ru\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+##################################################################
+# Interface principale
+##################################################################
+msgid "French"
+msgstr "Французский"
+
+msgid "English"
+msgstr "Английский"
+
+# Onglets principaux
+msgid "Downloads"
+msgstr "Загрузки"
+
+msgid "Finished"
+msgstr "Завершено"
+
+msgid "Video Info"
+msgstr "Информация о видео"
+
+msgid "Settings"
+msgstr "Настройки"
+
+# Settings
+msgid "General"
+msgstr "Общие"
+
+msgid "Metadata"
+msgstr "Метаданные"
+
+msgid "Audio"
+msgstr "Аудио"
+
+msgid "Video"
+msgstr "Видео"
+
+msgid "Apply all"
+msgstr "Применить все"
+
+msgid "Import"
+msgstr "Импорт"
+
+msgid "Export"
+msgstr "Экспорт"
+
+##################################################################
+# Messages de dialogue
+##################################################################
+msgid "Import settings"
+msgstr "Импорт настроек"
+
+msgid "Export settings"
+msgstr "Экспорт настроек"
+
+msgid "Settings imported successfully"
+msgstr "Настройки успешно импортированы"
+
+msgid "Settings exported successfully"
+msgstr "Настройки успешно экспортированы"
+
+msgid "Error importing settings"
+msgstr "Ошибка импорта настроек"
+
+msgid "Error exporting settings"
+msgstr "Ошибка экспорта настроек"
+
+msgid "Invalid URL"
+msgstr "URL неправильный"
+
+msgid "Please enter a valid URL http(s)"
+msgstr "Пожалуйста, введите правильный URL http(s)."
+
+##################################################################
+# Downloads
+##################################################################
+msgid "Download"
+msgstr "Скачать"
+
+msgid "Download video"
+msgstr "Скачать видео"
+
+msgid "Download audio"
+msgstr "Скачать аудио"
+
+msgid "URL"
+msgstr "URL"
+
+msgid "Quality"
+msgstr "Качество"
+
+msgid "Format"
+msgstr "Формат"
+
+msgid "Progress"
+msgstr "Прогресс"
+
+msgid "Cancel"
+msgstr "Отмена"
+
+msgid "Clear finished"
+msgstr "Очистить завершенные"
+
+msgid "No downloads in progress"
+msgstr "Нет загрузок в процессе"
+
+msgid "No finished downloads"
+msgstr "Нет завершенных загрузок"
+
+##################################################################
+# Terminal
+##################################################################
+msgid "Terminal"
+msgstr "Терминал"
+
+msgid "Terminal - Real-time output"
+msgstr "Терминал - Вывод в реальном времени"
+
+msgid "Clear"
+msgstr "Очистить"
+
+msgid "Refresh"
+msgstr "Обновить"
+
+msgid "Close"
+msgstr "Закрыть"
+
+# Messages de log du terminal
+msgid "yt-dlp: {}"
+msgstr "yt-dlp: {}"
+
+msgid "Download {} marked for cancellation"
+msgstr "Загрузка {} отмечена для отмены"
+
+msgid "Download {} paused"
+msgstr "Загрузка {} приостановлена"
+
+msgid "Download {} resumed"
+msgstr "Загрузка {} возобновлена"
+
+msgid "URL detection in progress..."
+msgstr "Обнаружение плейлиста в процессе..."
+
+msgid "URL detected as playlist ({}): {}"
+msgstr "URL обнаружен как плейлист ({}): {}"
+
+msgid "Detection error: {}"
+msgstr "Ошибка обнаружения: {}"
+
+msgid "Items number: {}"
+msgstr "Количество элементов: {}"
+
+msgid "Playlist folder: {}"
+msgstr "Папка плейлиста: {}"
+
+msgid "Error: {}"
+msgstr "Ошибка: {}"
+
+msgid "Playlist detected: {}"
+msgstr "Плейлист обнаружен: {}"
+
+msgid "Items: {}"
+msgstr "Элементы: {}"
+
+msgid "Thumbnail available"
+msgstr "Миниатюра доступна"
+
+msgid "No thumbnail available"
+msgstr "Миниатюра недоступна"
+
+msgid "Single video detected: {}"
+msgstr "Обнаружено одиночное видео: {}"
+
+msgid "Title: {}"
+msgstr "Название: {}"
+
+msgid "Thumbnail: {}"
+msgstr "Миниатюра: {}"
+
+msgid "Estimated size: {}"
+msgstr "Оценочный размер: {}"
+
+msgid "Size: will be calculated in real time"
+msgstr "Размер: будет рассчитан в реальном времени"
+
+msgid "Filename template converted: {} -> {}"
+msgstr "Шаблон имени файла преобразован: {} -> {}"
+
+msgid "Custom format: {}"
+msgstr "Пользовательский формат: {}"
+
+msgid "Preferred audio codec: {}"
+msgstr "Предпочитаемый аудио кодек: {}"
+
+msgid "Audio extension: {}"
+msgstr "Аудио расширение: {}"
+
+msgid "Preferred video codec: {}"
+msgstr "Предпочитаемый видео кодек: {}"
+
+msgid "Video extension: {}"
+msgstr "Видео расширение: {}"
+
+msgid "Subtitles enabled"
+msgstr "Субтитры включены"
+
+msgid "Chapters enabled"
+msgstr "Главы включены"
+
+msgid "Metadata added"
+msgstr "Метаданные добавлены"
+
+msgid "Custom metadata: {}"
+msgstr "Пользовательские метаданные: {}"
+
+msgid "Parse metadata enabled"
+msgstr "Parse metadata включен"
+
+msgid "Parse metadata rules: {}"
+msgstr "Правила parse metadata: {}"
+
+msgid "Download rate limit: {} KiB/s"
+msgstr "Лимит скорости загрузки: {} KiB/s"
+
+msgid "Concurrent fragments: {}"
+msgstr "Одновременные фрагменты: {}"
+
+msgid "Thumbnail addition enabled"
+msgstr "Добавление миниатюры включено"
+
+msgid "Overwrite existing files enabled"
+msgstr "Перезапись существующих файлов включена"
+
+msgid "Starting download: {}"
+msgstr "Начало загрузки: {}"
+
+msgid "Download completed: {}"
+msgstr "Загрузка завершена: {}"
+
+msgid "Download cancelled: {}"
+msgstr "Загрузка отменена: {}"
+
+msgid "Download failed: {} - {}"
+msgstr "Загрузка не удалась: {} - {}"
+
+msgid "File already exists: {}"
+msgstr "Файл уже существует: {}"
+
+msgid "Cannot write file: {}"
+msgstr "Невозможно записать файл: {}"
+
+msgid "Insufficient disk space"
+msgstr "Недостаточно места на диске"
+
+msgid "Network error"
+msgstr "Ошибка сети"
+
+msgid "Authentication required"
+msgstr "Требуется аутентификация"
+
+msgid "Video not available"
+msgstr "Видео недоступно"
+
+msgid "Private video"
+msgstr "Приватное видео"
+
+msgid "Region restricted"
+msgstr "Ограничено регионом"
+
+msgid "Age restricted"
+msgstr "Ограничено возрастом"
+
+# Messages de dialogue d'erreur
+msgid "Detection error"
+msgstr "Ошибка обнаружения"
+
+msgid "Error during playlist detection:\n\n{}\n\nProcess stopped."
+msgstr "Ошибка при обнаружении плейлиста:\n\n{}\n\nПроцесс остановлен."
+
+msgid "Submission error"
+msgstr "Ошибка отправки"
+
+msgid "Error during download preparation:\n\n{}\n\nProcess stopped."
+msgstr "Ошибка при подготовке загрузки:\n\n{}\n\nПроцесс остановлен."
+
+# Messages d'état et de progression
+msgid "{} - Completed"
+msgstr "{} - Завершено"
+
+msgid "Playlist - {}"
+msgstr "Плейлист - {}"
+
+msgid "Downloading"
+msgstr "Загрузка"
+
+msgid "Completed: {}"
+msgstr "Завершено: {}"
+
+# Messages d'erreur de téléchargement
+msgid "Playlist download error: {}"
+msgstr "Ошибка загрузки плейлиста: {}"
+
+msgid "Original URL: {}"
+msgstr "Оригинальный URL: {}"
+
+msgid "Directory: {}"
+msgstr "Каталог: {}"
+
+msgid "Download {} cancelled successfully"
+msgstr "Загрузка {} успешно отменена"
+
+msgid "Download error: {}"
+msgstr "Ошибка загрузки: {}"
+
+msgid "URL: {}"
+msgstr "URL: {}"
+
+# Messages de configuration et de traitement
+msgid "Error in YdlLogHandler.emit: {}"
+msgstr "Ошибка в YdlLogHandler.emit: {}"
+
+msgid "Error during URL analysis: {}"
+msgstr "Ошибка при анализе URL: {}"
+
+msgid "Playlist detected by {}"
+msgstr "Плейлист обнаружен {}"
+
+msgid "not playlist"
+msgstr "не плейлист"
+
+msgid "Processing playlist"
+msgstr "Обработка плейлиста"
+
+msgid "Processing single item"
+msgstr "Обработка одного элемента"
+
+msgid "Audio: Best automatic quality"
+msgstr "Аудио: Лучшее автоматическое качество"
+
+msgid "Parsing metadata: Enabled"
+msgstr "Parsing метаданных: Включен"
+
+msgid "Raw rules: {}"
+msgstr "Сырые правила: {}"
+
+msgid "Metadata FFmpeg: Enabled"
+msgstr "Метаданные FFmpeg: Включены"
+
+msgid "Thumbnail: Enabled"
+msgstr "Миниатюра: Включена"
+
+msgid "Square thumbnail: Enabled (audio)"
+msgstr "Квадратная миниатюра: Включена (аудио)"
+
+msgid "Subtitles: Enabled (all languages)"
+msgstr "Субтитры: Включены (все языки)"
+
+msgid "Chapters: Enabled"
+msgstr "Главы: Включены"
+
+msgid "Playlist completed successfully!"
+msgstr "Плейлист успешно завершен!"
+
+msgid "Download completed successfully!"
+msgstr "Загрузка успешно завершена!"
+
+msgid "Parameters: overwrite={}, rate_limit={}KiB/s"
+msgstr "Параметры: overwrite={}, rate_limit={}KiB/s"
+
+msgid "Output directory verified: {}"
+msgstr "Выходной каталог проверен: {}"
+
+msgid "yt-dlp options configured:"
+msgstr "Опции yt-dlp настроены:"
+
+msgid "   - Format: {}"
+msgstr "   - Формат: {}"
+
+msgid "   - Template: {}"
+msgstr "   - Шаблон: {}"
+
+msgid "   - Postprocessors: {} configured"
+msgstr "   - Постпроцессоры: {} настроены"
+
+msgid "Launching download with yt-dlp..."
+msgstr "Запуск загрузки с yt-dlp..."
+
+msgid "info"
+msgstr "info"
+
+msgid "playlist"
+msgstr "playlist"
+
+msgid "Download cancelled before extraction"
+msgstr "Загрузка отменена до извлечения"
+
+msgid "Processing playlist options"
+msgstr "Обработка опций плейлиста"
+
+msgid "Processing single item option"
+msgstr "Обработка опции одного элемента"
+
+##################################################################
+# Video Info
+##################################################################
+msgid "Title"
+msgstr "Название"
+
+msgid "Duration"
+msgstr "Длительность"
+
+msgid "Views"
+msgstr "Просмотры"
+
+msgid "Uploader"
+msgstr "Загрузчик"
+
+msgid "Upload date"
+msgstr "Дата загрузки"
+
+msgid "Description"
+msgstr "Описание"
+
+msgid "No video information"
+msgstr "Нет информации о видео"
+
+msgid "Enter video URL"
+msgstr "Введите URL видео"
+
+msgid "Get video info"
+msgstr "Получить информацию о видео"
+
+msgid "Available formats"
+msgstr "Доступные форматы"
+
+msgid "Error"
+msgstr "Ошибка"
+
+msgid "Format error"
+msgstr "Ошибка формата"
+
+msgid "Please analyze a video first"
+msgstr "Пожалуйста, сначала проанализируйте видео"
+
+msgid "URL not available"
+msgstr "URL недоступен"
+
+msgid "The selected file is not a valid JSON file."
+msgstr "Выбранный файл не является допустимым файлом JSON."
+
+##################################################################
+# Finished Downloads
+##################################################################
+msgid "Finished downloads"
+msgstr "Завершенные загрузки"
+
+msgid "Clear history"
+msgstr "Очистить историю"
+
+##################################################################
+# Messages système
+##################################################################
+msgid "Language changed"
+msgstr "Язык изменен"
+
+msgid "Language changed to {} ({})"
+msgstr "Язык изменен на {} ({})"
+
+##################################################################
+# Settings - General
+##################################################################
+msgid "Choose…"
+msgstr "Выбрать…"
+
+msgid "Download directory"
+msgstr "Каталог загрузки"
+
+msgid "Output template"
+msgstr "Шаблон имени файла"
+
+msgid "Output format"
+msgstr "Формат вывода"
+
+msgid "Overwrite existing files"
+msgstr "Перезаписывать существующие файлы"
+
+msgid "Limit download rate"
+msgstr "Ограничить скорость загрузки"
+
+msgid "Simultaneous download fragments"
+msgstr "Одновременные фрагменты загрузки"
+
+msgid "Add thumbnail"
+msgstr "Добавить миниатюру"
+
+msgid "Download playlist"
+msgstr "Загрузить плейлист"
+
+msgid "Playlist folder name"
+msgstr "Имя папки плейлиста"
+
+msgid "Proxy URL"
+msgstr "URL прокси"
+
+msgid "Choose destination folder"
+msgstr "Выбрать папку назначения"
+
+##################################################################
+# Settings - Metadata
+##################################################################
+msgid "Add metadata"
+msgstr "Добавить метаданные"
+
+msgid "Custom metadata (key=value)"
+msgstr "Пользовательские метаданные (ключ=значение)"
+
+msgid "Detect metadata (parse-metadata)"
+msgstr "Обнаружить метаданные (parse-metadata)"
+
+msgid "Parse-metadata rules (1 per line)"
+msgstr "Правила parse-metadata (1 на строку)"
+
+msgid "Open settings folder"
+msgstr "Открыть папку настроек"
+
+##################################################################
+# Settings - Audio
+##################################################################
+msgid "Preferred codec"
+msgstr "Предпочитаемый кодек"
+
+msgid "Extension / container"
+msgstr "Расширение / контейнер"
+
+msgid "Square thumbnail"
+msgstr "Квадратная миниатюра"
+
+##################################################################
+# Settings - Video
+##################################################################
+msgid "Subtitles"
+msgstr "Субтитры"
+
+msgid "Chapters"
+msgstr "Главы"
+
+##################################################################
+# Templates et placeholders
+##################################################################
+msgid "%(title)s.%(ext)s"
+msgstr "%(title)s.%(ext)s"
+
+msgid "%(album,playlist_title)s/"
+msgstr "%(album,playlist_title)s/"
+
+##################################################################
+# Messages supplémentaires pour les vues
+##################################################################
+msgid "URL ..."
+msgstr "URL ..."
+
+msgid "video"
+msgstr "видео"
+
+msgid "audio"
+msgstr "аудио"
+
+msgid "Add"
+msgstr "Добавить"
+
+msgid "Analyze"
+msgstr "Анализировать"
+
+msgid "Resolution"
+msgstr "Разрешение"
+
+msgid "Codec"
+msgstr "Кодек"
+
+msgid "Size"
+msgstr "Размер"
+
+msgid "FPS"
+msgstr "FPS"
+
+msgid "Enter video URL..."
+msgstr "Введите URL видео..."
+
+msgid "Destination folder"
+msgstr "Папка назначения"
+
+##################################################################
+# Messages d'import/export étendus
+##################################################################
+msgid "Settings imported successfully\n\nAll settings have been applied."
+msgstr "Настройки успешно импортированы\n\nВсе настройки применены."
+
+msgid "Unable to import settings"
+msgstr "Невозможно импортировать настройки"
+
+msgid "Unable to import settings:\n{}"
+msgstr "Невозможно импортировать настройки:\n{}"
+
+msgid "Settings exported successfully\n\nFile saved to: {}"
+msgstr "Настройки успешно экспортированы\n\nФайл сохранен в: {}"
+
+msgid "Unable to export settings"
+msgstr "Невозможно экспортировать настройки"
+
+msgid "Unable to export settings:\n{}"
+msgstr "Невозможно экспортировать настройки:\n{}"
+
+##################################################################
+# Placeholders pour les formulaires
+##################################################################
+msgid "http://proxy.example.com:8080"
+msgstr "http://proxy.example.com:8080"
+
+msgid "username"
+msgstr "имяпользователя"
+
+msgid "password"
+msgstr "пароль"

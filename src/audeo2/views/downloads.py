@@ -9,6 +9,8 @@ import toga
 from toga.style import Pack
 from pathlib import Path
 
+from ..i18n import _
+
 class TerminalWindow(toga.Window):
     """Fenêtre de terminal personnalisée avec gestion du focus"""
     
@@ -25,10 +27,16 @@ class DownloadsView:
         self._terminal_window: Optional[TerminalWindow] = None
         self._terminal_text: Optional[toga.MultilineTextInput] = None
 
-        self.url_input = toga.TextInput(placeholder="URL ...", style=Pack(flex=1, margin=5))
-        self.kind_select = toga.Selection(items=["video", "audio"], style=Pack(width=130, margin=5))
-        self.kind_select.value = "video"
-        add_btn = toga.Button("Ajouter", on_press=self.app._on_add, style=Pack(margin=5))
+        self.url_input = toga.TextInput(placeholder=_("URL ..."), style=Pack(flex=1, margin=5))
+        self.kind_select = toga.Selection(
+            items=[
+                {"name": _("video"), "value": "video"}, 
+                {"name": _("audio"), "value": "audio"}
+            ], 
+            accessor="name", 
+            style=Pack(width=130, margin=5))
+        self.kind_select.value.value = "video"
+        add_btn = toga.Button(_("Add"), on_press=self.app._on_add, style=Pack(width=70, margin=5))
         self.process_anim = toga.ActivityIndicator(running=False, style=Pack(margin=5))
         icons_dir = Path(__file__).resolve().parent.parent / "ressources" / "pictures"
         terminal_icon = toga.Icon(str(icons_dir / "terminal-24.png"))
@@ -80,9 +88,9 @@ class DownloadsView:
                     self._terminal_text.value = current_content
             
             # Boutons de contrôle
-            clear_btn = toga.Button("Effacer", on_press=self._clear_terminal, style=Pack(margin=6))
-            refresh_btn = toga.Button("Rafraîchir", on_press=self._refresh_terminal, style=Pack(margin=6))
-            close_btn = toga.Button("Fermer", on_press=self._close_terminal, style=Pack(margin=6))
+            clear_btn = toga.Button(_("Clear"), on_press=self._clear_terminal, style=Pack(margin=6))
+            refresh_btn = toga.Button(_("Refresh"), on_press=self._refresh_terminal, style=Pack(margin=6))
+            close_btn = toga.Button(_("Close"), on_press=self._close_terminal, style=Pack(margin=6))
             
             button_box = toga.Box(style=Pack(direction="row"))
             button_box.add(clear_btn)
@@ -97,7 +105,7 @@ class DownloadsView:
             
             # Créer la fenêtre
             self._terminal_window = TerminalWindow(
-                title="Terminal - Sortie en temps réel",
+                title=_("Terminal - Real-time output"),
                 content=main_box,
                 size=(850, 650)
             )

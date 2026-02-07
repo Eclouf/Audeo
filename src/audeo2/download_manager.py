@@ -17,6 +17,7 @@ import toga
 
 from .settings import AppSettings
 from .views import DownloadsView
+from .i18n import _
 
 class YdlLogHandler(logging.Handler):
     """Handler personnalisé pour rediriger les logs yt-dlp vers le terminal"""
@@ -39,23 +40,23 @@ class YdlLogHandler(logging.Handler):
                 if not any(skip in message_lower for skip in skip_patterns):
                     # Ajouter un préfixe pour identifier les messages yt-dlp
                     if '[info]' in message_lower:
-                        self.downloads_view.log_info(f"yt-dlp: {message.strip()}")
+                        self.downloads_view.log_info(_("yt-dlp: {}").format(message.strip()))
                     elif '[warning]' in message_lower:
-                        self.downloads_view.log_warning(f"yt-dlp: {message.strip()}")
+                        self.downloads_view.log_warning(_("yt-dlp: {}").format(message.strip()))
                     elif '[error]' in message_lower:
-                        self.downloads_view.log_error(f"yt-dlp: {message.strip()}")
+                        self.downloads_view.log_error(_("yt-dlp: {}").format(message.strip()))
                     elif 'download' in message_lower and '%' in message_lower:
                         # Messages de progression de téléchargement
-                        self.downloads_view.log_info(f"yt-dlp: {message.strip()}")
+                        self.downloads_view.log_info(_("yt-dlp: {}").format(message.strip()))
                     elif any(keyword in message_lower for keyword in ['extracting', 'downloading', 'finished', 'playlist']):
                         # Messages importants sur le déroulement
-                        self.downloads_view.log_info(f"yt-dlp: {message.strip()}")
+                        self.downloads_view.log_info(_("yt-dlp: {}").format(message.strip()))
                     else:
                         # Autres messages debug moins importants
-                        self.downloads_view.log_debug(f"yt-dlp: {message.strip()}")
+                        self.downloads_view.log_debug(_("yt-dlp: {}").format(message.strip()))
         except Exception as e:
             # Afficher l'erreur pour le debugging
-            print(f"Erreur dans YdlLogHandler.emit: {e}")
+            print(_("Error in YdlLogHandler.emit: {}").format(e))
             # Ignorer les erreurs de logging pour ne pas bloquer yt-dlp
             pass
 
@@ -156,7 +157,7 @@ class DownloadManager:
                 
                 # Notifier l'application
                 if self._downloads_view:
-                    self._downloads_view.log_info(f"Téléchargement {task_id} marqué pour annulation")
+                    self._downloads_view.log_info(_("Download {} marked for cancellation").format(task_id))
                     
     def pause_download(self, task_id: str) -> None:
         """Met en pause un téléchargement spécifique"""
@@ -165,7 +166,7 @@ class DownloadManager:
             if task:
                 task.paused = True
                 if self._downloads_view:
-                    self._downloads_view.log_info(f"Téléchargement {task_id} mis en pause")
+                    self._downloads_view.log_info(_("Download {} paused").format(task_id))
                     
     def resume_download(self, task_id: str) -> None:
         """Reprend un téléchargement spécifique"""
@@ -174,7 +175,7 @@ class DownloadManager:
             if task:
                 task.paused = False
                 if self._downloads_view:
-                    self._downloads_view.log_info(f"Téléchargement {task_id} repris")
+                    self._downloads_view.log_info(_("Download {} resumed").format(task_id))
 
     def _detect_playlist_by_url(self, url: str) -> bool:
         """
@@ -263,14 +264,14 @@ class DownloadManager:
             
         except Exception as e:
             if self._downloads_view:
-                self._downloads_view.log_debug(f"Erreur lors de l'analyse d'URL: {e}")
+                self._downloads_view.log_debug(_("Error during URL analysis: {}").format(e))
             return False
 
     def submit(self, *, url: str, output_dir: Path, kind: str, settings: AppSettings) -> list[DownloadTask]:
         """Télécharge une URL ou une playlist complète"""
         # Démarrer l'animation immédiatement dans le thread principal
         self._downloads_view.process_anim.start()
-        self._downloads_view.log_info("Détection de playlist en cours...")
+        self._downloads_view.log_info(_("URL detection in progress..."))
         
         # Lancer la détection dans un thread séparé pour ne pas bloquer l'interface
         import threading
@@ -302,14 +303,14 @@ class DownloadManager:
                         
                     if is_playlist:
                         detection_method = "yt-dlp" if ytdl_is_playlist else "URL analysis"
-                        self._downloads_view.log_info(f"URL détectée comme une playlist ({detection_method}): {url}")
-                        print(f"Playlist detected by {detection_method}")
+                        self._downloads_view.log_info(_("URL detected as playlist ({}): {}").format(detection_method, url))
+                        print(_("Playlist detected by {}").format(detection_method))
                     else:
-                        print("not playlist")
+                        print(_("not playlist"))
                         
                 except Exception as e:
                     # Erreur de détection - logger simplement et arrêter
-                    self._downloads_view.log_error(f"Erreur de détection: {str(e)}")
+                    self._downloads_view.log_error(_("Detection error: {}").format(str(e)))
                     
                     # Afficher une fenêtre de dialogue d'erreur simple
                     if self._main_window:
@@ -317,8 +318,8 @@ class DownloadManager:
                             # Utiliser une approche plus simple qui fonctionne dans les threads
                             import asyncio
                             dialog = toga.ErrorDialog(
-                                title="Erreur de détection",
-                                message=f"Erreur lors de la détection de playlist:\n\n{str(e)}\n\nArrêt du processus."
+                                title=_("Detection error"),
+                                message=_("Error during playlist detection:\n\n{}\n\nProcess stopped.").format(str(e))
                             )
                             # Planifier l'affichage du dialogue sur le thread principal
                             if hasattr(self._main_window, 'app') and hasattr(self._main_window.app, 'loop'):
@@ -336,21 +337,21 @@ class DownloadManager:
                 # Créer les tâches
                 tasks = []
                 if is_playlist and settings.general.download_playlist:
-                    print("\nProcessing playlist\n")
-                    self._downloads_view.log_info("Processing playlist")
-                    self._downloads_view.log_info(f"Items number: {info.get('playlist_count', 0)}")
+                    print(_("Processing playlist"))
+                    self._downloads_view.log_info(_("Processing playlist"))
+                    self._downloads_view.log_info(_("Items number: {}").format(info.get('playlist_count', 0)))
                     if settings.general.download_playlist and settings.general.playlist_folder_name.strip():
                         playlist_folder_name = settings.general.playlist_folder_name.strip()
                         final_output_dir = output_dir / playlist_folder_name
-                        self._downloads_view.log_info(f"Dossier playlist: {final_output_dir}")
+                        self._downloads_view.log_info(_("Playlist folder: {}").format(final_output_dir))
                         
                     elif settings.general.download_playlist:
                         final_output_dir = output_dir
-                        self._downloads_view.log_info(f"Dossier playlist: {final_output_dir}")
+                        self._downloads_view.log_info(_("Playlist folder: {}").format(final_output_dir))
                         
                     tasks = [self._task(url, final_output_dir, kind, settings, True)]
                 else:
-                    print("\nProcessing single item\n")
+                    print(_("Processing single item"))
                     final_output_dir = output_dir
                     tasks = [self._task(url, final_output_dir, kind, settings, False)]
                 
@@ -367,15 +368,15 @@ class DownloadManager:
             except Exception as e:
                 self._downloads_view.process_anim.stop()
                 if self._downloads_view:
-                    self._downloads_view.log_error(f"Erreur: {str(e)}")
+                    self._downloads_view.log_error(_("Error: {}").format(str(e)))
                 
                 # Afficher une fenêtre de dialogue d'erreur simple
                 if self._main_window:
                     try:
                         import asyncio
                         dialog = toga.ErrorDialog(
-                            title="Erreur lors de la soumission",
-                            message=f"Erreur lors de la préparation du téléchargement:\n\n{str(e)}\n\nArrêt du processus."
+                            title=_("Submission error"),
+                            message=_("Error during download preparation:\n\n{}\n\nProcess stopped.").format(str(e))
                         )
                         # Planifier l'affichage du dialogue sur le thread principal
                         if hasattr(self._main_window, 'app') and hasattr(self._main_window.app, 'loop'):
@@ -470,15 +471,15 @@ class DownloadManager:
         is_playlist = task.playlist
         
         if not info:
-            print("\ninfo\n")
+            self._downloads_view.log_info(_("Extracting metadata..."))
             # Vérifier si la tâche a été annulée avant l'extraction
             if task.cancelled:
-                raise yt_dlp.DownloadError("Téléchargement annulé avant l'extraction des métadonnées")
+                raise yt_dlp.DownloadError(_("Download cancelled before extraction"))
                 
             # Extraction des métadonnées selon le type
             extract_opts = self._prepare_base_options(task.settings)
             if is_playlist:
-                print("\nplaylist\n")
+                print(_("playlist"))
                 extract_opts['extract_flat'] = True  # Métadonnées complètes pour playlist
                 extract_opts['noplaylist'] = False    # Garder la playlist
             else:
@@ -490,7 +491,7 @@ class DownloadManager:
                 
             # Vérifier si la tâche a été annulée pendant l'extraction
             if task.cancelled:
-                raise yt_dlp.DownloadError("Téléchargement annulé pendant l'extraction des métadonnées")
+                raise yt_dlp.DownloadError(_("Download cancelled during metadata extraction"))
         
         if is_playlist and g.download_playlist:
             print("\nProcessing playlist options\n")
@@ -525,12 +526,12 @@ class DownloadManager:
                     pass  # Ignorer les erreurs de miniature
                 
             if self._downloads_view:
-                self._downloads_view.log_info(f"Playlist détectée: {title}")
-                self._downloads_view.log_info(f"Items: {info.get('playlist_count', 0)}")
+                self._downloads_view.log_info(_("Playlist detected: {}").format(title))
+                self._downloads_view.log_info(_("Items: {}").format(info.get('playlist_count', 0)))
                 if thumbnail_url:
-                    self._downloads_view.log_info(f"Miniature disponible")
+                    self._downloads_view.log_info(_("Thumbnail available"))
                 else:
-                    self._downloads_view.log_info(f"Pas de miniature disponible")
+                    self._downloads_view.log_info(_("No thumbnail available"))
             
             # Configurer pour télécharger toute la playlist
             ydl_opts["noplaylist"] = False
@@ -543,7 +544,7 @@ class DownloadManager:
             total_bytes = info.get("filesize") or info.get("filesize_approx")
             
             if self._downloads_view:
-                self._downloads_view.log_info(f"Vidéo seule détectée: {title}")
+                self._downloads_view.log_info(_("Single video detected: {}").format(title))
             
             # Configurer pour télécharger seulement cette vidéo
             ydl_opts["noplaylist"] = True
@@ -553,13 +554,13 @@ class DownloadManager:
             title = title[:29] + "..."
         
         if self._downloads_view:
-            self._downloads_view.log_info(f"Titre: {title}")
+            self._downloads_view.log_info(_("Title: {}").format(title))
             if thumbnail_url:
-                self._downloads_view.log_info(f"Vignette: {thumbnail_url}")
+                self._downloads_view.log_info(_("Thumbnail: {}").format(thumbnail_url))
             if total_bytes:
-                self._downloads_view.log_info(f"Taille estimée: {self._format_bytes(total_bytes)}")
+                self._downloads_view.log_info(_("Estimated size: {}").format(self._format_bytes(total_bytes)))
             else:
-                self._downloads_view.log_info("Taille: sera calculée en temps réel")
+                self._downloads_view.log_info(_("Size: will be calculated in real time"))
         
         # Compteur d'items pour les playlists
         item_counter = 0
@@ -624,7 +625,7 @@ class DownloadManager:
                         task_id=task.task_id,
                         status="finished",
                         percent=1.0,
-                        title=f"{title} - Terminé",
+                        title=_("{} - Completed").format(title),
                         thumbnail_url=thumbnail_url,
                         filename=d.get("filename"),
                         item_number=current_item,
@@ -665,7 +666,7 @@ class DownloadManager:
             output_template = re.sub(r'%\(([^)]+)\)s', convert_multiple_fields, output_template)
             
             if self._downloads_view and original_template != output_template:
-                self._downloads_view.log_info(f"Modèle de nom converti: {original_template} -> {output_template}")
+                self._downloads_view.log_info(_("Filename template converted: {} -> {}").format(original_template, output_template))
         
         ydl_opts.update({
             "outtmpl": str(task.output_dir / output_template),
@@ -692,7 +693,7 @@ class DownloadManager:
         if g.output_format:
             ydl_opts["format"] = g.output_format
             if self._downloads_view:
-                self._downloads_view.log_info(f"Format personnalisé: {g.output_format}")
+                self._downloads_view.log_info(_("Custom format: {}").format(g.output_format))
         elif task.kind == "audio":
             target_ext = None
             if aset.preferred_codec and aset.preferred_codec != "auto":
@@ -707,7 +708,7 @@ class DownloadManager:
                 # D'abord essayer de trouver le format avec l'extension souhaitée
                 ydl_opts["format"] = f"bestaudio[ext={target_ext}]/bestaudio"
                 if self._downloads_view:
-                    self._downloads_view.log_info(f"Audio: Recherche format {target_ext}, conversion si nécessaire")
+                    self._downloads_view.log_info(_("Preferred audio codec: {}").format(target_ext))
                 
                 # Ajouter le postprocessor de conversion seulement si le format direct n'est pas trouvé
                 # yt-dlp utilisera le postprocessor seulement si le format cible n'est pas disponible
@@ -729,11 +730,11 @@ class DownloadManager:
                         "preferredquality": "0",  # Meilleure qualité
                     })
                     if self._downloads_view:
-                        self._downloads_view.log_info(f"Audio: Conversion vers {target_ext} si format direct non disponible")
+                        self._downloads_view.log_info(_("Audio extension: {}").format(target_ext))
             else:
                 ydl_opts["format"] = "bestaudio/best"
                 if self._downloads_view:
-                    self._downloads_view.log_info("Audio: Meilleur qualité automatique")
+                    self._downloads_view.log_info(_("Audio: Best automatic quality"))
         else:
             fmt = "bestvideo+bestaudio/best"
             codec_name = "auto"
@@ -751,19 +752,19 @@ class DownloadManager:
             if vset.ext and vset.ext != "auto":
                 ydl_opts["merge_output_format"] = vset.ext
                 if self._downloads_view:
-                    self._downloads_view.log_info(f"Vidéo: Codec {codec_name} -> Extension {vset.ext}")
+                    self._downloads_view.log_info(_("Preferred video codec: {}").format(codec_name))
             elif self._downloads_view:
-                self._downloads_view.log_info(f"Vidéo: Codec {codec_name}")
+                self._downloads_view.log_info(_("Preferred video codec: {}").format(codec_name))
         
         # Handle metadata parsing
         if getattr(g, "parse_metadata_enabled", False):
             if self._downloads_view:
-                self._downloads_view.log_info("Parsing métadonnées: Activé")
+                self._downloads_view.log_info(_("Parsing metadata: Enabled"))
                 
             rules_raw = (getattr(g, "parse_metadata_rules", "") or "").strip()
             if rules_raw:
                 if self._downloads_view:
-                    self._downloads_view.log_debug(f"Règles brutes: {rules_raw}")
+                    self._downloads_view.log_debug(_("Raw rules: {}").format(rules_raw))
                 
                 actions = []
                 for raw in rules_raw.splitlines():
@@ -792,7 +793,9 @@ class DownloadManager:
                         "actions": actions,
                     })
                     if self._downloads_view:
-                        self._downloads_view.log_info(f"Actions métadonnées: {len(actions)} règles appliquées")
+                        self._downloads_view.log_info(_("Parse metadata enabled"))
+                    if self._downloads_view:
+                        self._downloads_view.log_info(_("Parse metadata rules: {}").format(len(actions)))
 
         if getattr(g, "add_metadata", True):
             ydl_opts["addmetadata"] = True
@@ -804,7 +807,7 @@ class DownloadManager:
                 "add_metadata": True,
             })
             if self._downloads_view:
-                self._downloads_view.log_info("Métadonnées FFmpeg: Activées")
+                self._downloads_view.log_info(_("Metadata FFmpeg: Enabled"))
             
             custom = (getattr(g, "custom_metadata", "") or "").strip()
             if custom:
@@ -823,14 +826,14 @@ class DownloadManager:
                         continue
                     ffmeta.extend(["-metadata", f"{key}={value}"])
                 if self._downloads_view:
-                    self._downloads_view.log_info(f"Métadonnées personnalisées: {len(ffmeta)//2} champs ajoutés")
+                    self._downloads_view.log_info(_("Custom metadata: {}").format(len(ffmeta)//2))
 
         # Handle thumbnail settings
         if g.add_thumbnail or (task.kind == "audio" and aset.square_thumbnail):
             if self._downloads_view:
-                self._downloads_view.log_info("Vignette: Activée")
+                self._downloads_view.log_info(_("Thumbnail: Enabled"))
                 if task.kind == "audio" and aset.square_thumbnail:
-                    self._downloads_view.log_info("Vignette carrée: Activée (audio)")
+                    self._downloads_view.log_info(_("Square thumbnail: Enabled (audio)"))
             ydl_opts["embedthumbnail"] = True
             ydl_opts["writethumbnail"] = True
             
@@ -860,12 +863,12 @@ class DownloadManager:
             ydl_opts["writeautomaticsub"] = True
             ydl_opts["subtitleslangs"] = ["all"]
             if self._downloads_view:
-                self._downloads_view.log_info("Sous-titres: Activés (toutes les langues)")
+                self._downloads_view.log_info(_("Subtitles: Enabled (all languages)"))
 
         if vset.chapters:
             ydl_opts["embedchapters"] = True
             if self._downloads_view:
-                self._downloads_view.log_info("Chapitres: Activés")
+                self._downloads_view.log_info(_("Chapters: Enabled"))
         
         return ydl_opts
         
@@ -874,9 +877,9 @@ class DownloadManager:
         self._downloads_view.process_anim.start()
         try:
             if self._downloads_view:
-                self._downloads_view.log_info(f"Début du téléchargement de playlist: {task.url}")
-                self._downloads_view.log_info(f"Répertoire: {task.output_dir}")
-                self._downloads_view.log_info(f"Type: {task.kind.upper()} | Mode: Playlist")
+                self._downloads_view.log_info(_("Starting download: {}").format(task.url))
+                self._downloads_view.log_info(_("Directory: {}").format(task.output_dir))
+                self._downloads_view.log_info(_("Type: {} | Mode: {}").format(task.kind.upper(), "Playlist"))
             
             # Préparer les options yt-dlp pour la playlist complète
             ytdl_opts = self._ytdl_options(task)
@@ -910,7 +913,7 @@ class DownloadManager:
                                 task_id=task.task_id,
                                 status="downloading",
                                 percent=progress,
-                                title=f"Playlist - {filename.split('/')[-1] if filename else 'Téléchargement'}",
+                                title=_("Playlist - {}").format(filename.split('/')[-1] if filename else _('Downloading')),
                                 downloaded_bytes=downloaded,
                                 total_bytes=total,
                                 eta_seconds=d.get("eta"),
@@ -925,7 +928,7 @@ class DownloadManager:
                             task_id=task.task_id,
                             status="finished",
                             percent=1.0,
-                            title=f"Terminé: {filename.split('/')[-1] if filename else 'Item'}",
+                            title=_("Completed: {}").format(filename.split('/')[-1] if filename else 'Item'),
                             filename=filename,
                         )
                     )
@@ -940,21 +943,21 @@ class DownloadManager:
                 del ytdl_opts['extract_flat']
             
             if self._downloads_view:
-                self._downloads_view.log_info(f"Téléchargement direct de la playlist: {task.url}")
+                self._downloads_view.log_info(_("Starting download: {}").format(task.url))
             
             # Télécharger directement la playlist - yt-dlp gère l'extraction en temps réel
             with yt_dlp.YoutubeDL(ytdl_opts) as ydl:
                 ydl.download([task.url])
             
             if self._downloads_view:
-                self._downloads_view.log_info("Playlist terminée avec succès!")
+                self._downloads_view.log_info(_("Playlist completed successfully!"))
             self._on_finished(task.task_id)
             
         except Exception as e:
             if self._downloads_view:
-                self._downloads_view.log_error(f"Erreur lors du téléchargement de playlist: {str(e)}")
-                self._downloads_view.log_error(f"URL originale: {task.url}")
-                self._downloads_view.log_error(f"Répertoire: {task.output_dir}")
+                self._downloads_view.log_error(_("Playlist download error: {}").format(str(e)))
+                self._downloads_view.log_error(_("Original URL: {}").format(task.url))
+                self._downloads_view.log_error(_("Directory: {}").format(task.output_dir))
             self._on_error(task.task_id, e)
 
     def _format_bytes(self, num_bytes: int) -> str:
@@ -975,31 +978,31 @@ class DownloadManager:
             # Vérifier si la tâche a été annulée avant de commencer
             if task.cancelled:
                 if self._downloads_view:
-                    self._downloads_view.log_info(f"Téléchargement {task.task_id} annulé avant le démarrage")
+                    self._downloads_view.log_info(_("Download cancelled: {}").format(task.task_id))
                 return
                 
             if self._downloads_view:
-                self._downloads_view.log_info(f"Début du téléchargement: {task.url}")
-                self._downloads_view.log_info(f"Type: {task.kind.upper()} | Répertoire: {task.output_dir}")
-                self._downloads_view.log_info(f"Paramètres: overwrite={task.settings.general.overwrite}, rate_limit={task.settings.general.limit_rate_kib_s}KiB/s")
+                self._downloads_view.log_info(_("Starting download: {}").format(task.url))
+                self._downloads_view.log_info(_("Type: {} | Directory: {}").format(task.kind.upper(), task.output_dir))
+                self._downloads_view.log_info(_("Parameters: overwrite={}, rate_limit={}KiB/s").format(task.settings.general.overwrite, task.settings.general.limit_rate_kib_s))
                 # Tester le handler yt-dlp
                 self._logger.info("Handler yt-dlp initialisé avec succès")
             
             task.output_dir.mkdir(parents=True, exist_ok=True)
             if self._downloads_view:
-                self._downloads_view.log_info(f"Répertoire de sortie vérifié: {task.output_dir}")
+                self._downloads_view.log_info(_("Output directory verified: {}").format(task.output_dir))
 
             # Préparer les options yt-dlp
             ydl_opts = self._ytdl_options(task)
             
             if self._downloads_view:
-                self._downloads_view.log_info(f"Options yt-dlp configurées:")
-                self._downloads_view.log_info(f"   - Format: {ydl_opts.get('format', 'default')}")
-                self._downloads_view.log_info(f"   - Template: {ydl_opts.get('outtmpl', 'default')}")
-                self._downloads_view.log_info(f"   - Postprocessors: {len(ydl_opts.get('postprocessors', []))} configurés")
+                self._downloads_view.log_info(_("yt-dlp options configured:"))
+                self._downloads_view.log_info(_("   - Format: {}").format(ydl_opts.get('format', 'default')))
+                self._downloads_view.log_info(_("   - Template: {}").format(ydl_opts.get('outtmpl', 'default')))
+                self._downloads_view.log_info(_("   - Postprocessors: {} configured").format(len(ydl_opts.get('postprocessors', []))))
                 self._downloads_view.log_debug("ydl_opts: " + str(ydl_opts))
                 self._downloads_view.log_debug(str(task))
-                self._downloads_view.log_info("Lancement du téléchargement avec yt-dlp...")
+                self._downloads_view.log_info(_("Launching download with yt-dlp..."))
                 
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([task.url])
@@ -1007,27 +1010,27 @@ class DownloadManager:
             # Vérifier si la tâche a été annulée pendant le téléchargement
             if task.cancelled:
                 if self._downloads_view:
-                    self._downloads_view.log_info(f"Téléchargement {task.task_id} annulé")
+                    self._downloads_view.log_info(_("Download cancelled: {}").format(task.task_id))
                 return
 
             if self._downloads_view:
-                self._downloads_view.log_info("Téléchargement terminé avec succès!")
+                self._downloads_view.log_info(_("Download completed successfully!"))
             self._on_finished(task.task_id)
         except yt_dlp.DownloadError as e:
             # Vérifier si c'est une annulation utilisateur
             if "annulé" in str(e).lower() and task.cancelled:
                 if self._downloads_view:
-                    self._downloads_view.log_info(f"Téléchargement {task.task_id} annulé avec succès")
+                    self._downloads_view.log_info(_("Download {} cancelled successfully").format(task.task_id))
                 # Ne pas appeler on_error pour les annulations normales
                 return
             else:
                 # Autre erreur de téléchargement
                 if self._downloads_view:
-                    self._downloads_view.log_error(f"Erreur de téléchargement: {str(e)}")
+                    self._downloads_view.log_error(_("Download error: {}").format(str(e)))
                 self._on_error(task.task_id, e)
         except Exception as e:
             if self._downloads_view:
-                self._downloads_view.log_error(f"Erreur lors du téléchargement: {str(e)}")
-                self._downloads_view.log_error(f"URL: {task.url}")
-                self._downloads_view.log_error(f"Répertoire: {task.output_dir}")
+                self._downloads_view.log_error(_("Download error: {}").format(str(e)))
+                self._downloads_view.log_error(_("URL: {}").format(task.url))
+                self._downloads_view.log_error(_("Directory: {}").format(task.output_dir))
             self._on_error(task.task_id, e)

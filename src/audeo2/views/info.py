@@ -11,6 +11,7 @@ from toga.style import Pack
 import yt_dlp
 
 from ..settings import AppSettings
+from ..i18n import _
 
 
 class VideoInfoView:
@@ -30,16 +31,16 @@ class VideoInfoView:
         # Section URL avec boutons
         url_section = toga.Box(style=Pack(direction="row", margin_bottom=15))
         self.url_input = toga.TextInput(
-            placeholder="Entrez l'URL de la vidéo...",
+            placeholder=_("Enter video URL..."),
             style=Pack(flex=1, margin_right=10)
         )
         self.analyze_btn = toga.Button(
-            "Analyser",
+            _("Analyze"),
             on_press=self._on_analyze,
             style=Pack(width=100, margin_right=5)
         )
         self.download_btn = toga.Button(
-            "Télécharger",
+            _("Download"),
             on_press=self._on_download,
             style=Pack(width=120),
             enabled=False
@@ -51,7 +52,7 @@ class VideoInfoView:
         # Section informations vidéo
         info_section = toga.Box(style=Pack(direction="column", margin_bottom=15))
         info_title = toga.Label(
-            "Informations vidéo",
+            _("Video Information"),
             style=Pack(font_size=14, font_weight="bold", margin_bottom=5)
         )
         
@@ -65,13 +66,13 @@ class VideoInfoView:
         # Section formats disponibles
         formats_section = toga.Box(style=Pack(direction="column", flex=1))
         formats_title = toga.Label(
-            "Formats disponibles",
+            _("Available formats"),
             style=Pack(font_size=14, font_weight="bold", margin_bottom=5)
         )
         
         # Tableau des formats
         self.formats_table = toga.Table(
-            headings=["Format", "Résolution", "Extension", "Codec", "Taille", "FPS"],
+            headings=[_("Format"), _("Resolution"), _("Extension"), _("Codec"), _("Size"), _("FPS")],
             style=Pack(flex=1)
         )
         
@@ -88,12 +89,12 @@ class VideoInfoView:
     def _create_info_labels(self) -> None:
         """Crée les labels pour afficher les informations"""
         self.info_labels = {
-            'title': toga.Label("Titre: -", style=Pack(font_weight="bold", font_size=12, margin_bottom=2)),
-            'duration': toga.Label("Durée: -", style=Pack(margin_bottom=2)),
-            'uploader': toga.Label("Chaîne: -", style=Pack(margin_bottom=2)),
-            'view_count': toga.Label("Vues: -", style=Pack(margin_bottom=2)),
-            'upload_date': toga.Label("Date: -", style=Pack(margin_bottom=2)),
-            'description': toga.Label("Description: -", style=Pack(margin_bottom=2)),
+            'title': toga.Label(f"{_("Title")}: -", style=Pack(font_weight="bold", font_size=12, margin_bottom=2)),
+            'duration': toga.Label(f"{_("Duration")}: -", style=Pack(margin_bottom=2)),
+            'uploader': toga.Label(f"{_("Uploader")}: -", style=Pack(margin_bottom=2)),
+            'view_count': toga.Label(f"{_("Views")}: -", style=Pack(margin_bottom=2)),
+            'upload_date': toga.Label(f"{_("Upload date")}: -", style=Pack(margin_bottom=2)),
+            'description': toga.Label(f"{_("Description")}: -", style=Pack(margin_bottom=2)),
         }
         
         for label in self.info_labels.values():
@@ -170,7 +171,7 @@ class VideoInfoView:
         self.download_btn.enabled = True
         
         # Mettre à jour les informations de base
-        self.info_labels['title'].text = f"Titre: {info.get('title', 'N/A')}"
+        self.info_labels['title'].text = f"{_("Title")}: {info.get('title', 'N/A')}"
         
         # Formater la durée
         duration = info.get('duration')
@@ -184,9 +185,9 @@ class VideoInfoView:
                 duration_str = f"{minutes}m {seconds}s"
         else:
             duration_str = "N/A"
-        self.info_labels['duration'].text = f"Durée: {duration_str}"
+        self.info_labels['duration'].text = f"{_("Duration")}: {duration_str}"
         
-        self.info_labels['uploader'].text = f"Chaîne: {info.get('uploader', 'N/A')}"
+        self.info_labels['uploader'].text = f"{_("Uploader")}: {info.get('uploader', 'N/A')}"
         
         # Formater le nombre de vues
         view_count = info.get('view_count')
@@ -199,7 +200,7 @@ class VideoInfoView:
                 views_str = str(view_count)
         else:
             views_str = "N/A"
-        self.info_labels['view_count'].text = f"Vues: {views_str}"
+        self.info_labels['view_count'].text = f"{_("Views")}: {views_str}"
         
         # Formater la date
         upload_date = info.get('upload_date')
@@ -207,7 +208,7 @@ class VideoInfoView:
             date_str = f"{upload_date[6:8]}/{upload_date[4:6]}/{upload_date[0:4]}"
         else:
             date_str = "N/A"
-        self.info_labels['upload_date'].text = f"Date: {date_str}"
+        self.info_labels['upload_date'].text = f"{_("Upload date")}: {date_str}"
         
         # Description (tronquée)
         description = info.get('description', '')
@@ -307,7 +308,7 @@ class VideoInfoView:
     def _show_error(self, message: str) -> None:
         """Affiche un message d'erreur"""
         # Utiliser un dialogue d'erreur
-        dialog = toga.ErrorDialog("Erreur", message)
+        dialog = toga.ErrorDialog(_("Error"), message)
         # Créer une tâche async pour le dialogue
         import asyncio
         asyncio.create_task(self.app.main_window.dialog(dialog))
@@ -315,21 +316,21 @@ class VideoInfoView:
     def _reset_analyze_button(self) -> None:
         """Réinitialise le bouton d'analyse"""
         self.analyze_btn.enabled = True
-        self.analyze_btn.text = "Analyser"
+        self.analyze_btn.text = _("Analyze")
         
     def _on_download(self, widget: toga.Button) -> None:
         """Gère le clic sur le bouton télécharger"""
         if not self.current_info:
-            self._show_error("Veuillez d'abord analyser une vidéo")
+            self._show_error(_("Please analyze a video first"))
             return
             
         url = self.url_input.value.strip()
         if not url:
-            self._show_error("URL non disponible")
+            self._show_error(_("URL not available"))
             return
             
         # Basculer vers l'onglet de téléchargement et lancer le téléchargement
-        self.app._show_view("Téléchargements")
+        self.app._show_view(_("Downloads"))
         
         # Remplir l'URL dans la vue de téléchargement et lancer
         self.app.url_input.value = url

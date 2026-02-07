@@ -9,7 +9,7 @@ import sys
 import tarfile
 import tempfile
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List
 from urllib.parse import urlparse
 from urllib.request import urlopen
 from urllib.request import urlretrieve
@@ -25,6 +25,7 @@ from .widgets import DownloadCard, DownloadCardModel, FinishedDownloadCard
 from .views import DownloadsView, FinishedDownloadsView, VideoInfoView, SettingsView
 from .settings import AppSettings, load_settings, save_settings
 from .ffmpeg import FFmpegManager
+from .i18n import i18n
 
 FRAME_COLOR = "#d3d3d3"
 FRAME_THICKNESS = 1.5
@@ -48,18 +49,19 @@ class Audeo2App(toga.App):
 
         self.settings: AppSettings = load_settings(self.config_dir)
         
-        # Vérifier et corriger la configuration ffmpeg
-        if self.settings.ffmpeg_path:
-            ffmpeg_test = Path(self.settings.ffmpeg_path)
-            if not ffmpeg_test.exists():
-                print(f"[Startup] Saved ffmpeg path does not exist: {self.settings.ffmpeg_path}")
-                print("[Startup] Resetting ffmpeg path")
-                self.settings.ffmpeg_path = None
-                # Sauvegarder immédiatement
-                try:
-                    save_settings(self.config_dir, self.settings)
-                except Exception:
-                    pass
+        # Appliquer la langue sauvegardée
+        i18n.set_language(self.settings.general.lang_code)
+        
+        # Vérifier si le chemin ffmpeg sauvegardé existe
+        if self.settings.ffmpeg_path and not Path(self.settings.ffmpeg_path).exists():
+            print(f"[Startup] Saved ffmpeg path does not exist: {self.settings.ffmpeg_path}")
+            print("[Startup] Resetting ffmpeg path")
+            self.settings.ffmpeg_path = None
+            # Sauvegarder immédiatement
+            try:
+                save_settings(self.config_dir, self.settings)
+            except Exception:
+                pass
         
         try:
             settings_path = self.config_dir / "settings.json"
@@ -72,7 +74,7 @@ class Audeo2App(toga.App):
         self._thumb_cache: dict[str, Path] = {}
         self._thumb_inflight: set[str] = set()
 
-        self.main_window = toga.MainWindow(title=self.formal_name, size=(900, 500))
+        self.main_window = toga.MainWindow(title=self.formal_name, size=(1100, 600))
 
         app_icon_path = Path(__file__).resolve().parent / "ressources" / "audeo.png"
         if app_icon_path.exists():
@@ -112,9 +114,10 @@ class Audeo2App(toga.App):
         self.nav_box.add(self.nav_btn_finished)
         self.nav_box.add(self.nav_btn_settings)
 
+        # Créer les vues
         self.downloads_view = DownloadsView(self)
-        self.info_view = VideoInfoView(self)
-        self.finished_view = FinishedDownloadsView(self)
+        self.finished_downloads_view = FinishedDownloadsView(self)
+        self.video_info_view = VideoInfoView(self)
         self.settings_view = SettingsView(self)
 
         # Créer le manager après avoir créé les vues
@@ -123,7 +126,7 @@ class Audeo2App(toga.App):
         self.url_input = self.downloads_view.url_input
         self.kind_select = self.downloads_view.kind_select
         self.cards_box = self.downloads_view.cards_box
-        self.finished_cards_box = self.finished_view.cards_box
+        self.finished_cards_box = self.finished_downloads_view.cards_box
 
         self.content = toga.Box(style=Pack(direction="column", flex=1))
         self._show_view("Téléchargements")
@@ -154,6 +157,23 @@ class Audeo2App(toga.App):
 
         self._bootstrap_ffmpeg()
 
+    
+
+    def notify_language_change(self) -> None:
+        """Reconstruit toutes les vues quand la langue change"""
+        try:
+            # Reconstruire directement chaque vue
+            self.downloads_view.__init__(self)
+            self.finished_downloads_view.__init__(self)
+            self.video_info_view.__init__(self)
+            self.settings_view.__init__(self)
+            
+            # Mettre à jour le contenu de l'OptionContainer
+            self.main_window.content.refresh()
+            
+        except Exception as e:
+            print(f"Erreur lors de la reconstruction des vues: {e}")
+    
     def save_settings(self) -> None:
         save_settings(self.config_dir, self.settings)
 
@@ -295,9 +315,9 @@ class Audeo2App(toga.App):
         if name == "Téléchargements":
             self.content.add(self.downloads_view.widget)
         elif name == "Informations":
-            self.content.add(self.info_view.widget)
+            self.content.add(self.video_info_view.widget)
         elif name == "Terminés":
-            self.content.add(self.finished_view.widget)
+            self.content.add(self.finished_downloads_view.widget)
         else:
             self.content.add(self.settings_view.widget)
 
@@ -327,15 +347,15 @@ class Audeo2App(toga.App):
         return self.manager
 
     def _on_add(self, widget: toga.Button) -> None:
-        url = (self.url_input.value or "").strip()
+        url = (self.downloads_view.url_input.value or "").strip()
         if not url:
             return
 
         if not self._is_valid_url(url):
             # Utiliser la méthode recommandée pour les dialogues dans les handlers synchrones
             dialog = toga.InfoDialog(
-                title="URL invalide",
-                message="Merci de saisir une URL http(s) valide."
+                title=_("Invalid URL"),
+                message=_("Please enter a valid URL http(s)")
             )
             # Créer une tâche async pour le dialogue
             import asyncio
@@ -343,13 +363,13 @@ class Audeo2App(toga.App):
             # Pas besoin de callback pour un simple dialogue d'information
             return
 
-        kind = str(self.kind_select.value or "video")
+        kind = str(self.downloads_view.kind_select.value.value or "video")
 
         # Lancer le téléchargement (retourne immédiatement, les tâches seront créées de manière asynchrone)
         self.manager.submit(url=url, output_dir=self.download_dir, kind=kind, settings=self.settings)
         
         # L'interface reste responsive, les cartes seront créées via le callback _on_tasks_ready
-        self.url_input.value = ""
+        self.downloads_view.url_input.value = ""
 
     def _is_valid_url(self, url: str) -> bool:
         try:
@@ -373,7 +393,7 @@ class Audeo2App(toga.App):
             card = DownloadCard(DownloadCardModel(task_id=task.task_id, title=task.url, url=task.url, kind=task.kind))
             card.set_app_reference(self)  # Définir la référence à l'application
             self._cards[task.task_id] = card
-            self.cards_box.add(card)
+            self.downloads_view.cards_box.add(card)
             
         # Mettre à jour l'affichage
         self.downloads_view._update_content_display()
@@ -475,10 +495,10 @@ class Audeo2App(toga.App):
             finished_card.thumb.image = card.thumb.image
 
         try:
-            self.cards_box.remove(card)
+            self.downloads_view.cards_box.remove(card)
         except Exception:
             pass
-        self.finished_cards_box.add(finished_card)
+        self.finished_downloads_view.cards_box.add(finished_card)
         self._cards.pop(task_id, None)
         
         # Mettre à jour l'affichage
@@ -499,12 +519,12 @@ class Audeo2App(toga.App):
 
     def _on_clear_finished(self, widget: toga.Button) -> None:
         try:
-            self.finished_cards_box.clear()
+            self.finished_downloads_view.cards_box.clear()
         except Exception:
             # Fallback: remove children one by one
-            for child in list(getattr(self.finished_cards_box, "children", [])):
+            for child in list(getattr(self.finished_downloads_view.cards_box, "children", [])):
                 try:
-                    self.finished_cards_box.remove(child)
+                    self.finished_downloads_view.cards_box.remove(child)
                 except Exception:
                     pass
 
@@ -513,7 +533,8 @@ Audeo is a user-friendly application built with Python and Toga that enables use
 The application provides a queue-based management system, download tracking, and a clean graphical interface for managing your media library.
     
     - Developed with Python and Toga
-    - Uses api yt-dlp and ffmpeg
+    - Uses api yt-dlp
+    - Uses ffmpeg, ffprobe
 """
 
 def main() -> Audeo2App:
@@ -521,7 +542,7 @@ def main() -> Audeo2App:
         formal_name="Audeo-2",
         app_id="com.audeo.audeo2",
         app_name="Audeo-2",
-        version="0.2.0",
+        version="0.3.0",
         author="Eclouf",
         description=DESCRIPTION,
         icon="ressources/audeo.png",

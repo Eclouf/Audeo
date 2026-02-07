@@ -1,5 +1,33 @@
 # Audeo Release Notes
 
+## 0.3.0 (07 Feb 2026)
+
+### � Major Features
+- **🌍 Multi-language Support**: Added comprehensive translations for the user interface
+  - **French (fr)**: Complete interface translation
+  - **English (en)**: Default language support  
+  - **Spanish (es)**: Traducción completa de la interfaz
+  - **Italian (it)**: Traduzione completa dell'interfaccia
+  - **Portuguese (pt)**: Tradução completa da interface
+  - **Polish (pl)**: Pełne tłumaczenie interfejsu
+  - **Russian (ru)**: Полный перевод интерфейса
+  - **German (de)**: Vollständige Interface-Übersetzung
+
+### 🔧 Improvements
+- **Updated Build Configuration**: Prepared all project files for seamless version management
+- **Enhanced Version Consistency**: Synchronized version numbers across all configuration files
+- **Documentation Updates**: Updated README and build scripts for better maintainability
+
+### 📦 Technical Changes
+- Updated version references in `build_multiplatform.py` for consistent builds
+- Synchronized `pyproject.toml` version with project release cycle
+- Updated `version.txt` with latest version information for Windows executables
+- Enhanced version management workflow for future releases
+- Added internationalization (i18n) framework with gettext support
+- Integrated translation files (.po) for all supported languages
+
+---
+
 ## 0.2.0 (31 Jan 2026)
 
 ### 🎉 Major Features
