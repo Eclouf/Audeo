@@ -510,8 +510,8 @@ class Audeo2App(toga.App):
             card.mark_error(str(e))
             # Afficher une fenêtre de dialogue d'erreur avec la nouvelle syntaxe
             dialog = toga.ErrorDialog(
-                title="Erreur de téléchargement",
-                message=f"Une erreur est survenue lors du téléchargement:\n\n{str(e)}"
+                title=_("Download error: {}"),
+                message=f"{_("Download error: {}")}: {str(e)}"
             )
             # Créer une tâche async pour le dialogue
             import asyncio

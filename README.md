@@ -24,7 +24,8 @@ Audeo is a user-friendly application built with Python and Toga that enables use
 - ✅ **Download History**: Track completed downloads with a finished items view
 - ⚙️ **Configurable Settings**: Customize download options, proxy settings, and application preferences
 - 🌐 **Proxy Support**: Full proxy configuration with authentication support for both analysis and downloads
-- 🎨 **Modern UI**: Clean and intuitive user interface built with Toga
+- � **Multi-language Support**: Full internationalization with support for 8 languages (English, French, Spanish, Italian, Portuguese, Polish, Russian, German)
+- � **Modern UI**: Clean and intuitive user interface built with Toga
 - 📊 **Download Management**: Monitor active downloads in real-time
 
 ## Project Structure
@@ -42,6 +43,15 @@ audeo/
 │   │       ├── audio/               # Audio-related icons and images
 │   │       ├── settings/            # Settings-related icons
 │   │       └── video/               # Video-related icons
+│   ├── locales/                     # Translation files
+│   │   ├── de/LC_MESSAGES/        # German translations
+│   │   ├── en/LC_MESSAGES/        # English translations
+│   │   ├── es/LC_MESSAGES/        # Spanish translations
+│   │   ├── fr/LC_MESSAGES/        # French translations
+│   │   ├── it/LC_MESSAGES/        # Italian translations
+│   │   ├── pl/LC_MESSAGES/        # Polish translations
+│   │   ├── pt/LC_MESSAGES/        # Portuguese translations
+│   │   └── ru/LC_MESSAGES/        # Russian translations
 │   └── views/                       # Application views/screens
 │       ├── __init__.py              # Views package initialization
 │       ├── downloads.py             # Active downloads view
@@ -87,6 +97,15 @@ Manages application configuration, including default paths, API endpoints, user 
 - Logging configuration
 - API configurations
 
+### i18n.py
+Handles internationalization and localization for the application. This module provides translation services using gettext and supports multiple languages with automatic language detection.
+
+**Key Features:**
+- Multi-language support (8 languages)
+- Automatic system language detection
+- Translation file management
+- Language switching capabilities
+
 ### widgets.py
 Contains reusable UI components that are used throughout the application. This module promotes code reusability and maintains a consistent visual style across different views.
 
@@ -129,6 +148,7 @@ Shows the history of all completed downloads. Users can:
 Provides an interface for configuring application settings:
 - Download location preferences
 - Default audio/video formats
+- Language selection (8 supported languages)
 - Proxy configuration (URL, username, password)
 - Metadata and thumbnail options
 - Playlist handling settings

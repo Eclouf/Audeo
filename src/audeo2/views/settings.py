@@ -73,7 +73,7 @@ class SettingsView:
             ],
             accessor="name", 
             on_change=self._lang_change, 
-            style=Pack(width=100, margin=10)
+            style=Pack(width=150, margin=10)
         )
         apply_all_btn = toga.Button(_("Apply all"), on_press=self._apply_all, style=Pack(width=100, margin=10))
         import_btn = toga.Button(_("Import"), on_press=self._import, style=Pack(width=100, margin=10))

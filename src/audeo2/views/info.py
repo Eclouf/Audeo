@@ -52,7 +52,7 @@ class VideoInfoView:
         # Section informations vidéo
         info_section = toga.Box(style=Pack(direction="column", margin_bottom=15))
         info_title = toga.Label(
-            _("Video Information"),
+            _("Video Info"),
             style=Pack(font_size=14, font_weight="bold", margin_bottom=5)
         )
         
@@ -330,10 +330,10 @@ class VideoInfoView:
             return
             
         # Basculer vers l'onglet de téléchargement et lancer le téléchargement
-        self.app._show_view(_("Downloads"))
+        self.app._show_view("Téléchargements")
         
         # Remplir l'URL dans la vue de téléchargement et lancer
-        self.app.url_input.value = url
+        self.app.downloads_view.url_input.value = url
         
         # Simuler un clic sur le bouton d'ajout
         self.app._on_add(None)
