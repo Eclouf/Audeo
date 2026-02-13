@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from os import path
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional
@@ -53,7 +54,7 @@ class DownloadCardModel:
 
 class DownloadCard(toga.Box):
     def __init__(self, model: DownloadCardModel) -> None:
-        super().__init__(style=toga.style.Pack(direction="row", margin=2, background_color="#888888"))
+        super().__init__(style=toga.style.Pack(direction="row", margin=5, background_color="#888888"))
         self.model = model
 
         default_path = Path(__file__).resolve().parent / "ressources"
@@ -67,7 +68,7 @@ class DownloadCard(toga.Box):
 
         self.title_label = toga.Label(model.title, style=toga.style.Pack(font_size=12, font_weight="bold"))
         self.meta_label = toga.Label("-", style=toga.style.Pack(margin_top=2))
-        self.status_label = toga.Label("En attente", style=toga.style.Pack(margin_top=4))
+        self.status_label = toga.Label(_("Preparing"), style=toga.style.Pack(margin_top=4))
         self.percent_label = toga.Label("0%", style=toga.style.Pack(margin_top=4))
 
         self.progress = toga.ProgressBar(max=1.0, style=toga.style.Pack(margin_top=6, flex=1))
@@ -148,13 +149,13 @@ class DownloadCard(toga.Box):
             )
         
         if status == "finished":
-            self.status_label.text = "Terminé"
+            self.status_label.text = _("Finished")
         elif status == "downloading":
-            self.status_label.text = f"Téléchargement: {int(self.progress.value * 100)}%"
+            self.status_label.text = f"{_('Downloading')}: {int(self.progress.value * 100)}%"
         elif status == "paused":
-            self.status_label.text = "En pause"
+            self.status_label.text = _("Paused")
         elif status == "preparing":
-            self.status_label.text = "Préparation..."
+            self.status_label.text = _("Preparing")
         else:
             self.status_label.text = status
 
@@ -169,16 +170,16 @@ class DownloadCard(toga.Box):
                     # Reprendre le téléchargement
                     self.app.manager.resume_download(self.task_id)
                     self.pause_btn.icon = self._pause
-                    self.status_label.text = "Téléchargement..."
+                    self.status_label.text = f"{_('Downloading')}..."
                     self.is_paused = False
                 else:
                     # Mettre en pause le téléchargement
                     self.app.manager.pause_download(self.task_id)
                     self.pause_btn.icon = self._play
-                    self.status_label.text = "En pause"
+                    self.status_label.text = _("Paused")
                     self.is_paused = True
             except Exception as e:
-                self.status_label.text = f"Erreur pause: {str(e)}"
+                self.status_label.text = f"{_('Error')}: {str(e)}"
                 
     def on_stop(self, widget: toga.Button) -> None:
         """Gère le clic sur le bouton d'arrêt"""
@@ -187,7 +188,7 @@ class DownloadCard(toga.Box):
                 # Désactiver tous les contrôles
                 self.pause_btn.enabled = False
                 self.stop.enabled = False
-                self.status_label.text = "Arrêt en cours..."
+                self.status_label.text = _("Stop downloading")
                 
                 # Arrêter le téléchargement via le manager
                 self.app.manager.cancel_download(self.task_id)
@@ -199,28 +200,31 @@ class DownloadCard(toga.Box):
                 def remove_card():
                     # Attendre un peu pour que l'annulation prenne effet
                     time.sleep(0.5)
-                    
-                    # Supprimer la carte de l'interface
-                    if self.app and hasattr(self.app, '_cards') and hasattr(self.app, 'cards_box'):
-                        try:
-                            # Supprimer du dictionnaire des cartes
-                            self.app._cards.pop(self.task_id, None)
-                            
-                            # Supprimer de l'interface
-                            self.app.cards_box.remove(self)
-                            
-                            # Utiliser la bonne référence pour le logging
-                            if hasattr(self.app, 'downloads_view') and self.app.downloads_view:
-                                self.app.downloads_view.log_info(f"Carte {self.task_id} supprimée")
-                        except Exception as e:
-                            if hasattr(self.app, 'downloads_view') and self.app.downloads_view:
-                                self.app.downloads_view.log_error(f"Erreur suppression carte: {e}")
+
+                    if not (self.app and hasattr(self.app, 'loop')):
+                        return
+
+                    def _remove_card_ui() -> None:
+                        if self.app and hasattr(self.app, '_cards') and hasattr(self.app, 'cards_box'):
+                            try:
+                                self.app._cards.pop(self.task_id, None)
+                                self.app.cards_box.remove(self)
+                                if hasattr(self.app, 'downloads_view') and self.app.downloads_view:
+                                    self.app.downloads_view.log_info(f"{_('Cart')} {self.task_id} {_('removed')}")
+                            except Exception as e:
+                                if hasattr(self.app, 'downloads_view') and self.app.downloads_view:
+                                    self.app.downloads_view.log_error(f"{_('Error')} {_('removing card')}: {e}")
+
+                    try:
+                        self.app.loop.call_soon_threadsafe(_remove_card_ui)
+                    except Exception:
+                        pass
                 
                 # Lancer la suppression en arrière-plan
                 threading.Thread(target=remove_card, daemon=True).start()
                 
             except Exception as e:
-                self.status_label.text = f"Erreur arrêt: {str(e)}"
+                self.status_label.text = f"{_('Error')}: {str(e)}"
                 self.pause_btn.enabled = True
                 self.stop.enabled = True
                 
@@ -231,9 +235,11 @@ class DownloadCard(toga.Box):
 
 class FinishedDownloadCard(toga.Box):
     def __init__(self, *, title: str, size_text: str, file_path: Optional[Path] = None) -> None:
-        super().__init__(style=toga.style.Pack(direction="row", margin=2, background_color="#888888"))
+        super().__init__(style=toga.style.Pack(direction="row", margin=5, background_color="#888888"))
 
         default_path = Path(__file__).resolve().parent / "ressources" / "default-200.png"
+        folder_path = Path(__file__).resolve().parent / "ressources" / "pictures"
+        path_folder = folder_path / "folder-open-24.png"
         self._default_image = toga.Image(str(default_path))
         self.file_path = file_path  # Stocker le chemin du fichier
 
@@ -246,12 +252,16 @@ class FinishedDownloadCard(toga.Box):
         right.add(self.title_label)
         right.add(self.size_label)
         
-        file_button = toga.Button("Fichier", on_press=self._show_file)
+        file_button = toga.Button(icon=toga.Icon(str(path_folder)), on_press=self._show_file)
         r_right = toga.Box(style=toga.style.Pack(direction="column", margin=(5, 5, 5, 5)))
-        r_right.add(file_button)
+        r_right.add(
+            toga.Box(style=toga.style.Pack(flex=1)),
+            file_button,
+            toga.Box(style=toga.style.Pack(flex=1))
+            )
         
         main_container = toga.Box(
-            children=[self.thumb, right, r_right],
+            children=[self.thumb, right, toga.Box(style=toga.style.Pack(flex=1)), r_right],
             style=toga.style.Pack(
                 direction="row", 
                 margin=1.5, 

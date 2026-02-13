@@ -17,7 +17,7 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 
 ##################################################################
-# Interface principale
+# Langues
 ##################################################################
 msgid "French"
 msgstr "Français"
@@ -25,12 +25,47 @@ msgstr "Français"
 msgid "English"
 msgstr "English"
 
+msgid "Italian"
+msgstr "Italien"
+
+msgid "German"
+msgstr "Allemand"
+
+msgid "Spanish"
+msgstr "Espagnol"
+
+msgid "Portuguese"
+msgstr "Portugais"
+
+msgid "Russian"
+msgstr "Russe"
+
+msgid "Polish"
+msgstr "Polonais"
+
+##################################################################
 # Onglets principaux
+##################################################################
 msgid "Downloads"
 msgstr "Téléchargements"
 
 msgid "Finished"
 msgstr "Terminés"
+
+msgid "Paused"
+msgstr "En pause"
+
+msgid "Preparing"
+msgstr "Préparation"
+
+msgid "Error"
+msgstr "Erreur"
+
+msgid "Pause"
+msgstr "Pause"
+
+msgid "Stop downloading"
+msgstr "Arrêt en cours..."
 
 msgid "Video Info"
 msgstr "Informations vidéo"

@@ -25,12 +25,42 @@ msgstr "Francês"
 msgid "English"
 msgstr "Inglês"
 
+msgid "Italian"
+msgstr "Italiano"
+
+msgid "German"
+msgstr "Alemão"
+
+msgid "Spanish"
+msgstr "Espanhol"
+
+msgid "Portuguese"
+msgstr "Português"
+
+msgid "Russian"
+msgstr "Russo"
+
+msgid "Polish"
+msgstr "Polonês"
+
 # Onglets principaux
 msgid "Downloads"
 msgstr "Downloads"
 
 msgid "Finished"
 msgstr "Concluídos"
+
+msgid "Paused"
+msgstr "Pausado"
+
+msgid "Preparing"
+msgstr "Preparando"
+
+msgid "Stop downloading"
+msgstr "Parar download"
+
+msgid "Pause"
+msgstr "Pausar"
 
 msgid "Video Info"
 msgstr "Informações do vídeo"

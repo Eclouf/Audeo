@@ -20,11 +20,11 @@ class SettingsView:
         self._metadata_example_rules = (
             "# Parsing des métadonnées\n"
             "artist:(.+)\n"
-            '"description:(Composer: ([^\\n]+))"\n\n'
+            'description:(Composer: ([^\\n]+))"\n\n'
             "album_artist:(?s)(.+)\n"
-            "'Audeo, v 1.0':(?s)(.+)\n\n"
-            '"%(playlist_index)s /%(playlist_count)s":(?s)(.+)\n'
-            '"description:(Vol\\. ([^\\n]+))"\n'
+            "Audeo, v 1.0':(?s)(.+)\n\n"
+            "%(playlist_index)s /%(playlist_count)s':(?s)(.+)\n"
+            "description:(Vol\\. ([^\\n]+))\n"
         )
 
         # Charger l'icône en premier (avant _build_general)
@@ -59,22 +59,28 @@ class SettingsView:
         video = self._wrap_scroll(self._build_video())
 
         # Bouton d'application global
+        _lang_pairs = [
+            ("French", "fr"),
+            ("English", "en"),
+            ("Italian", "it"),
+            ("German", "de"),
+            ("Spanish", "es"),
+            ("Portuguese", "pt"),
+            ("Russian", "ru"),
+            ("Polish", "pl"),
+        ]
+        lang_display_to_code = {_(label): code for label, code in _lang_pairs}
+
+        current_lang_code = self.app.settings.general.lang_code
+        current_lang_label = next((_(label) for label, code in _lang_pairs if code == current_lang_code), _("French"))
+
         lang_select = toga.Selection(
-            items=[
-                {"name": _("French"), "value": "fr"}, 
-                {"name": _("English"), "value": "en"},
-                {"name": _("Italian"), "value": "it"},
-                {"name": _("German"), "value": "de"},
-                {"name": _("Spanish"), "value": "es"},
-                
-                {"name": _("Portuguese"), "value": "pt"},
-                {"name": _("Russian"), "value": "ru"},
-                {"name": _("Polish"), "value": "pl"},
-            ],
-            accessor="name", 
-            on_change=self._lang_change, 
+            items=list(lang_display_to_code.keys()),
+            value=current_lang_label,
+            on_change=self._lang_change,
             style=Pack(width=150, margin=10)
         )
+        self._lang_display_to_code = lang_display_to_code
         apply_all_btn = toga.Button(_("Apply all"), on_press=self._apply_all, style=Pack(width=100, margin=10))
         import_btn = toga.Button(_("Import"), on_press=self._import, style=Pack(width=100, margin=10))
         export_btn = toga.Button(_("Export"), on_press=self._export, style=Pack(width=100, margin=10))
@@ -108,9 +114,11 @@ class SettingsView:
 
     async def _lang_change(self, widget, **kwargs):
         """Gère le changement de langue"""
-        lang_code = widget.value.value
-        lang_name = widget.value.name
-        
+        lang_name = str(widget.value or "")
+        lang_code = getattr(self, "_lang_display_to_code", {}).get(lang_name)
+        if not lang_code:
+            return
+
         # Sauvegarder la langue dans les paramètres
         self.app.settings.general.lang_code = lang_code
         self.app.save_settings()
@@ -227,8 +235,8 @@ class SettingsView:
 
         box = toga.Box(style=Pack(direction="column", flex=1, margin_top=15, margin_left=10, margin_right=10))
         box.add(self._row("Destination folder", dest_row, icon=self._folder_dest_icon))
-        box.add(self._row("Output template", self.output_format_input))
-        box.add(self._row("Output format", self.output_template_input, icon=self._file_name_icon))
+        box.add(self._row("Output template", self.output_template_input, icon=self._file_name_icon))
+        box.add(self._row("Output format", self.output_format_input))
         box.add(self._row("Overwrite existing files", self.overwrite_switch, icon=self._file_rewrite_icon))
         box.add(self._row("Limit download rate", limit_rate_row, icon=self._speed_icon))
         box.add(self._row("Simultaneous download fragments", self.fragments_input, icon=self._fragments_icon))

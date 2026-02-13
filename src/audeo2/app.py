@@ -162,14 +162,78 @@ class Audeo2App(toga.App):
     def notify_language_change(self) -> None:
         """Reconstruit toutes les vues quand la langue change"""
         try:
-            # Reconstruire directement chaque vue
-            self.downloads_view.__init__(self)
-            self.finished_downloads_view.__init__(self)
-            self.video_info_view.__init__(self)
-            self.settings_view.__init__(self)
-            
-            # Mettre à jour le contenu de l'OptionContainer
-            self.main_window.content.refresh()
+            current_widget = None
+            try:
+                children = list(getattr(self.content, "children", []) or [])
+                if children:
+                    current_widget = children[0]
+            except Exception:
+                current_widget = None
+
+            # Conserver les cartes en cours et l'historique terminé
+            existing_cards = list(getattr(self, "_cards", {}).values())
+            existing_finished_cards = []
+            try:
+                existing_finished_cards = list(getattr(self.finished_downloads_view, "cards_box", None).children or [])
+            except Exception:
+                existing_finished_cards = []
+
+            old_downloads_widget = getattr(self.downloads_view, "widget", None)
+            old_finished_widget = getattr(self.finished_downloads_view, "widget", None)
+            old_info_widget = getattr(self.video_info_view, "widget", None)
+            old_settings_widget = getattr(self.settings_view, "widget", None)
+
+            # Recréer proprement les vues
+            self.downloads_view = DownloadsView(self)
+            self.finished_downloads_view = FinishedDownloadsView(self)
+            self.video_info_view = VideoInfoView(self)
+            self.settings_view = SettingsView(self)
+
+            # Mettre à jour les références utilisées par l'app
+            self.url_input = self.downloads_view.url_input
+            self.kind_select = self.downloads_view.kind_select
+            self.cards_box = self.downloads_view.cards_box
+            self.finished_cards_box = self.finished_downloads_view.cards_box
+
+            # Réattacher les cartes existantes à la nouvelle vue
+            for card in existing_cards:
+                try:
+                    self.downloads_view.cards_box.add(card)
+                except Exception:
+                    pass
+            try:
+                self.downloads_view._update_content_display()
+            except Exception:
+                pass
+
+            for finished_card in existing_finished_cards:
+                try:
+                    self.finished_downloads_view.cards_box.add(finished_card)
+                except Exception:
+                    pass
+
+            # Mettre à jour les références internes du manager (logs, etc.)
+            try:
+                if hasattr(self, "manager") and self.manager is not None:
+                    if hasattr(self.manager, "_downloads_view"):
+                        self.manager._downloads_view = self.downloads_view
+                    if hasattr(self.manager, "_ydl_handler") and self.manager._ydl_handler is not None:
+                        if hasattr(self.manager._ydl_handler, "downloads_view"):
+                            self.manager._ydl_handler.downloads_view = self.downloads_view
+            except Exception:
+                pass
+
+            # Rester sur l'onglet courant si possible
+            if current_widget is old_downloads_widget:
+                self._show_view("Téléchargements")
+            elif current_widget is old_info_widget:
+                self._show_view("Informations")
+            elif current_widget is old_finished_widget:
+                self._show_view("Terminés")
+            elif current_widget is old_settings_widget:
+                self._show_view("Paramètres")
+            else:
+                self._show_view("Téléchargements")
             
         except Exception as e:
             print(f"Erreur lors de la reconstruction des vues: {e}")
