@@ -12,6 +12,7 @@ import yt_dlp
 
 from ..settings import AppSettings
 from ..i18n import _
+from ..constants import ViewName
 
 
 class VideoInfoView:
@@ -52,7 +53,7 @@ class VideoInfoView:
         # Section informations vidéo
         info_section = toga.Box(style=Pack(direction="column", margin_bottom=15))
         info_title = toga.Label(
-            _("Video Information"),
+            _("Video Info"),
             style=Pack(font_size=14, font_weight="bold", margin_bottom=5)
         )
         
@@ -104,16 +105,16 @@ class VideoInfoView:
         """Gère le clic sur le bouton analyser"""
         url = self.url_input.value.strip()
         if not url:
-            self._show_error("Veuillez entrer une URL valide")
+            self._show_error(_("Please enter a valid URL"))
             return
             
         if not self._is_valid_url(url):
-            self._show_error("URL invalide. Utilisez une URL http(s) valide.")
+            self._show_error(_("Invalid URL. Please use a valid http(s) URL."))
             return
             
         # Désactiver le bouton pendant l'analyse
         self.analyze_btn.enabled = False
-        self.analyze_btn.text = "Analyse..."
+        self.analyze_btn.text = _("Analyzing...")
         
         # Lancer l'analyse en arrière-plan
         self.executor.submit(self._analyze_video, url)
@@ -214,7 +215,7 @@ class VideoInfoView:
         description = info.get('description', '')
         if description:
             description = description[:100] + "..." if len(description) > 100 else description
-        self.info_labels['description'].text = f"Description: {description or 'N/A'}"
+        self.info_labels['description'].text = f"{_('Description')}: {description or 'N/A'}"
         
         # Mettre à jour le tableau des formats
         self._update_formats_table(info.get('formats', []))
@@ -330,10 +331,10 @@ class VideoInfoView:
             return
             
         # Basculer vers l'onglet de téléchargement et lancer le téléchargement
-        self.app._show_view(_("Downloads"))
+        self.app._show_view(ViewName.DOWNLOADS)
         
         # Remplir l'URL dans la vue de téléchargement et lancer
-        self.app.url_input.value = url
+        self.app.downloads_view.url_input.value = url
         
         # Simuler un clic sur le bouton d'ajout
         self.app._on_add(None)

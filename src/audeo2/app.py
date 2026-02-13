@@ -26,6 +26,7 @@ from .views import DownloadsView, FinishedDownloadsView, VideoInfoView, Settings
 from .settings import AppSettings, load_settings, save_settings
 from .ffmpeg import FFmpegManager
 from .i18n import i18n
+from .constants import ViewName
 
 FRAME_COLOR = "#d3d3d3"
 FRAME_THICKNESS = 1.5
@@ -129,7 +130,7 @@ class Audeo2App(toga.App):
         self.finished_cards_box = self.finished_downloads_view.cards_box
 
         self.content = toga.Box(style=Pack(direction="column", flex=1))
-        self._show_view("Téléchargements")
+        self._show_view(ViewName.DOWNLOADS)
         self.cadre = toga.Box(
             children=[
                 toga.Box(style=Pack(background_color=FRAME_COLOR, height=FRAME_THICKNESS)),
@@ -162,14 +163,78 @@ class Audeo2App(toga.App):
     def notify_language_change(self) -> None:
         """Reconstruit toutes les vues quand la langue change"""
         try:
-            # Reconstruire directement chaque vue
-            self.downloads_view.__init__(self)
-            self.finished_downloads_view.__init__(self)
-            self.video_info_view.__init__(self)
-            self.settings_view.__init__(self)
-            
-            # Mettre à jour le contenu de l'OptionContainer
-            self.main_window.content.refresh()
+            current_widget = None
+            try:
+                children = list(getattr(self.content, "children", []) or [])
+                if children:
+                    current_widget = children[0]
+            except Exception:
+                current_widget = None
+
+            # Conserver les cartes en cours et l'historique terminé
+            existing_cards = list(getattr(self, "_cards", {}).values())
+            existing_finished_cards = []
+            try:
+                existing_finished_cards = list(getattr(self.finished_downloads_view, "cards_box", None).children or [])
+            except Exception:
+                existing_finished_cards = []
+
+            old_downloads_widget = getattr(self.downloads_view, "widget", None)
+            old_finished_widget = getattr(self.finished_downloads_view, "widget", None)
+            old_info_widget = getattr(self.video_info_view, "widget", None)
+            old_settings_widget = getattr(self.settings_view, "widget", None)
+
+            # Recréer proprement les vues
+            self.downloads_view = DownloadsView(self)
+            self.finished_downloads_view = FinishedDownloadsView(self)
+            self.video_info_view = VideoInfoView(self)
+            self.settings_view = SettingsView(self)
+
+            # Mettre à jour les références utilisées par l'app
+            self.url_input = self.downloads_view.url_input
+            self.kind_select = self.downloads_view.kind_select
+            self.cards_box = self.downloads_view.cards_box
+            self.finished_cards_box = self.finished_downloads_view.cards_box
+
+            # Réattacher les cartes existantes à la nouvelle vue
+            for card in existing_cards:
+                try:
+                    self.downloads_view.cards_box.add(card)
+                except Exception:
+                    pass
+            try:
+                self.downloads_view._update_content_display()
+            except Exception:
+                pass
+
+            for finished_card in existing_finished_cards:
+                try:
+                    self.finished_downloads_view.cards_box.add(finished_card)
+                except Exception:
+                    pass
+
+            # Mettre à jour les références internes du manager (logs, etc.)
+            try:
+                if hasattr(self, "manager") and self.manager is not None:
+                    if hasattr(self.manager, "_downloads_view"):
+                        self.manager._downloads_view = self.downloads_view
+                    if hasattr(self.manager, "_ydl_handler") and self.manager._ydl_handler is not None:
+                        if hasattr(self.manager._ydl_handler, "downloads_view"):
+                            self.manager._ydl_handler.downloads_view = self.downloads_view
+            except Exception:
+                pass
+
+            # Rester sur l'onglet courant si possible
+            if current_widget is old_downloads_widget:
+                self._show_view(ViewName.DOWNLOADS)
+            elif current_widget is old_info_widget:
+                self._show_view(ViewName.INFO)
+            elif current_widget is old_finished_widget:
+                self._show_view(ViewName.FINISHED)
+            elif current_widget is old_settings_widget:
+                self._show_view(ViewName.SETTINGS)
+            else:
+                self._show_view(ViewName.DOWNLOADS)
             
         except Exception as e:
             print(f"Erreur lors de la reconstruction des vues: {e}")
@@ -299,24 +364,24 @@ class Audeo2App(toga.App):
         raise RuntimeError("This method is no longer used; use audeo2.views.SettingsView")
 
     def _go_downloads(self, widget: toga.Button) -> None:
-        self._show_view("Téléchargements")
+        self._show_view(ViewName.DOWNLOADS)
 
     def _go_info(self, widget: toga.Button) -> None:
-        self._show_view("Informations")
+        self._show_view(ViewName.INFO)
 
     def _go_finished(self, widget: toga.Button) -> None:
-        self._show_view("Terminés")
+        self._show_view(ViewName.FINISHED)
 
     def _go_settings(self, widget: toga.Button) -> None:
-        self._show_view("Paramètres")
+        self._show_view(ViewName.SETTINGS)
 
-    def _show_view(self, name: str) -> None:
+    def _show_view(self, name: ViewName) -> None:
         self.content.clear()
-        if name == "Téléchargements":
+        if name == ViewName.DOWNLOADS:
             self.content.add(self.downloads_view.widget)
-        elif name == "Informations":
+        elif name == ViewName.INFO:
             self.content.add(self.video_info_view.widget)
-        elif name == "Terminés":
+        elif name == ViewName.FINISHED:
             self.content.add(self.finished_downloads_view.widget)
         else:
             self.content.add(self.settings_view.widget)
@@ -510,8 +575,8 @@ class Audeo2App(toga.App):
             card.mark_error(str(e))
             # Afficher une fenêtre de dialogue d'erreur avec la nouvelle syntaxe
             dialog = toga.ErrorDialog(
-                title="Erreur de téléchargement",
-                message=f"Une erreur est survenue lors du téléchargement:\n\n{str(e)}"
+                title=_("Download error: {}"),
+                message=f"{_("Download error: {}")}: {str(e)}"
             )
             # Créer une tâche async pour le dialogue
             import asyncio
@@ -542,7 +607,7 @@ def main() -> Audeo2App:
         formal_name="Audeo-2",
         app_id="com.audeo.audeo2",
         app_name="Audeo-2",
-        version="0.3.0",
+        version="0.4.0",
         author="Eclouf",
         description=DESCRIPTION,
         icon="ressources/audeo.png",

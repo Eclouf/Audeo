@@ -5,7 +5,7 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: audeo2 0.3.0\n"
+"Project-Id-Version: audeo2 0.4.0\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2025-02-07 00:00+0000\n"
 "PO-Revision-Date: 2025-02-07 00:00+0000\n"
@@ -25,12 +25,42 @@ msgstr "Французский"
 msgid "English"
 msgstr "Английский"
 
+msgid "Italian"
+msgstr "Итальянский"
+
+msgid "German"
+msgstr "Немецкий"
+
+msgid "Spanish"
+msgstr "Испанский"
+
+msgid "Portuguese"
+msgstr "Португальский"
+
+msgid "Russian"
+msgstr "Русский"
+
+msgid "Polish"
+msgstr "Польский"
+
 # Onglets principaux
 msgid "Downloads"
 msgstr "Загрузки"
 
 msgid "Finished"
 msgstr "Завершено"
+
+msgid "Paused"
+msgstr "На паузе"
+
+msgid "Preparing"
+msgstr "Подготовка"
+
+msgid "Stop downloading"
+msgstr "Остановить загрузку"
+
+msgid "Pause"
+msgstr "Пауза"
 
 msgid "Video Info"
 msgstr "Информация о видео"
