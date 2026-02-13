@@ -26,6 +26,7 @@ from .views import DownloadsView, FinishedDownloadsView, VideoInfoView, Settings
 from .settings import AppSettings, load_settings, save_settings
 from .ffmpeg import FFmpegManager
 from .i18n import i18n
+from .constants import ViewName
 
 FRAME_COLOR = "#d3d3d3"
 FRAME_THICKNESS = 1.5
@@ -129,7 +130,7 @@ class Audeo2App(toga.App):
         self.finished_cards_box = self.finished_downloads_view.cards_box
 
         self.content = toga.Box(style=Pack(direction="column", flex=1))
-        self._show_view("Téléchargements")
+        self._show_view(ViewName.DOWNLOADS)
         self.cadre = toga.Box(
             children=[
                 toga.Box(style=Pack(background_color=FRAME_COLOR, height=FRAME_THICKNESS)),
@@ -225,15 +226,15 @@ class Audeo2App(toga.App):
 
             # Rester sur l'onglet courant si possible
             if current_widget is old_downloads_widget:
-                self._show_view("Téléchargements")
+                self._show_view(ViewName.DOWNLOADS)
             elif current_widget is old_info_widget:
-                self._show_view("Informations")
+                self._show_view(ViewName.INFO)
             elif current_widget is old_finished_widget:
-                self._show_view("Terminés")
+                self._show_view(ViewName.FINISHED)
             elif current_widget is old_settings_widget:
-                self._show_view("Paramètres")
+                self._show_view(ViewName.SETTINGS)
             else:
-                self._show_view("Téléchargements")
+                self._show_view(ViewName.DOWNLOADS)
             
         except Exception as e:
             print(f"Erreur lors de la reconstruction des vues: {e}")
@@ -363,24 +364,24 @@ class Audeo2App(toga.App):
         raise RuntimeError("This method is no longer used; use audeo2.views.SettingsView")
 
     def _go_downloads(self, widget: toga.Button) -> None:
-        self._show_view("Téléchargements")
+        self._show_view(ViewName.DOWNLOADS)
 
     def _go_info(self, widget: toga.Button) -> None:
-        self._show_view("Informations")
+        self._show_view(ViewName.INFO)
 
     def _go_finished(self, widget: toga.Button) -> None:
-        self._show_view("Terminés")
+        self._show_view(ViewName.FINISHED)
 
     def _go_settings(self, widget: toga.Button) -> None:
-        self._show_view("Paramètres")
+        self._show_view(ViewName.SETTINGS)
 
-    def _show_view(self, name: str) -> None:
+    def _show_view(self, name: ViewName) -> None:
         self.content.clear()
-        if name == "Téléchargements":
+        if name == ViewName.DOWNLOADS:
             self.content.add(self.downloads_view.widget)
-        elif name == "Informations":
+        elif name == ViewName.INFO:
             self.content.add(self.video_info_view.widget)
-        elif name == "Terminés":
+        elif name == ViewName.FINISHED:
             self.content.add(self.finished_downloads_view.widget)
         else:
             self.content.add(self.settings_view.widget)

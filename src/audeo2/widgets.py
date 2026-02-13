@@ -160,7 +160,7 @@ class DownloadCard(toga.Box):
             self.status_label.text = status
 
     def mark_error(self, message: str) -> None:
-        self.status_label.text = f"Erreur: {message}"
+        self.status_label.text = f"{_('Error')}: {message}"
         
     def on_pause(self, widget: toga.Button) -> None:
         """Gère le clic sur le bouton pause"""
@@ -342,16 +342,16 @@ class FinishedDownloadCard(toga.Box):
                 system = platform.system()
                 
                 if system == "Linux":
-                    error_msg = f"Impossible d'ouvrir le dossier:\n\n{str(e)}\n\nDossier: {self.file_path}\n\n" \
-                             "Solutions possibles:\n" \
-                             "1. Installer xdg-utils: sudo apt install xdg-utils (Ubuntu/Debian)\n" \
-                             "2. Installer votre gestionnaire de fichiers: sudo apt install nautilus (GNOME)\n" \
-                             "3. Ou naviguez manuellement vers: {self.file_path}"
+                    error_msg = f"{_('Unable to open folder')}:\n\n{str(e)}\n\n{_('Folder')}: {self.file_path}\n\n" \
+                             f"{_('Possible solutions')}:\n" \
+                             f"1. {_('Install xdg-utils')}: sudo apt install xdg-utils (Ubuntu/Debian)\n" \
+                             f"2. {_('Install your file manager')}: sudo apt install nautilus (GNOME)\n" \
+                             f"3. {_('Or navigate manually to')}: {self.file_path}"
                 else:
-                    error_msg = f"Impossible d'ouvrir le dossier:\n\n{str(e)}\n\nDossier: {self.file_path}"
+                    error_msg = f"{_('Unable to open folder')}:\n\n{str(e)}\n\n{_('Folder')}: {self.file_path}"
                 
                 dialog = toga.InfoDialog(
-                    title="Erreur",
+                    title=_("Error"),
                     message=error_msg
                 )
                 # Créer une tâche async pour le dialogue
@@ -362,8 +362,8 @@ class FinishedDownloadCard(toga.Box):
             # Dossier introuvable
             import toga
             dialog = toga.InfoDialog(
-                title="Dossier introuvable",
-                message=f"Le dossier n'existe plus:\n\n{self.file_path}"
+                title=_("Folder not found"),
+                message=f"{_('The folder no longer exists')}:\n\n{self.file_path}"
             )
             # Créer une tâche async pour le dialogue
             import asyncio

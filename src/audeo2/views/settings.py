@@ -285,10 +285,38 @@ class SettingsView:
         g.add_thumbnail = bool(self.add_thumbnail_switch.value)
         g.download_playlist = bool(self.download_playlist_switch.value)
         g.playlist_folder_name = (self.playlist_folder_input.value or "").strip()
-        g.proxy_url = (self.proxy_url_input.value or "").strip()
+        
+        # Validate proxy URL
+        proxy_url = (self.proxy_url_input.value or "").strip()
+        if proxy_url and not self._is_valid_proxy_url(proxy_url):
+            # Invalid proxy URL - reset to empty but don't block other settings
+            proxy_url = ""
+            self.proxy_url_input.value = ""
+        g.proxy_url = proxy_url
+        
         g.proxy_id = (self.proxy_id_input.value or "").strip()
         g.proxy_pw = (self.proxy_pw_input.value or "").strip()
         self.app.save_settings()
+
+    def _is_valid_proxy_url(self, url: str) -> bool:
+        """Validate proxy URL format (http://host:port or https://host:port)"""
+        if not url:
+            return True  # Empty is valid (no proxy)
+        try:
+            from urllib.parse import urlparse
+            parsed = urlparse(url)
+            # Must have scheme http or https
+            if parsed.scheme not in ("http", "https"):
+                return False
+            # Must have a hostname
+            if not parsed.hostname:
+                return False
+            # Port should be valid if specified
+            if parsed.port is not None and (parsed.port < 1 or parsed.port > 65535):
+                return False
+            return True
+        except Exception:
+            return False
 
     def _build_metadata(self) -> toga.Widget:
         g = self.app.settings.general
