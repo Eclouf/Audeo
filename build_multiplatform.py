@@ -14,7 +14,7 @@ from pathlib import Path
 def get_version_info():
     """Retourne les informations de version communes"""
     return {
-        'version': '0.3.0',
+        'version': '0.4.0',
         'name': 'Audeo-2',
         'company': 'Eclouf',
         'description': 'Audeo is a user-friendly application for downloading audio and video content from various online sources',
@@ -275,7 +275,7 @@ def create_macos_version_files():
     """Crée les fichiers de version pour macOS"""
     print("Creating macOS version files...")
     
-    version_info = "0.3.0"
+    version_info = "0.4.0"
     bundle_id = "com.eclouf.audeo2"
     
     # Créer le bundle structure
@@ -458,7 +458,7 @@ def create_linux_version_files():
     """Crée les fichiers de version pour Linux"""
     print("Creating Linux version files...")
     
-    version_info = "0.3.0"
+    version_info = "0.4.0"
     package_name = "audeo2"
     maintainer = "Eclouf <contact@eclouf.com>"
     description = "Audeo is a user-friendly application for downloading audio and video content from various online sources"

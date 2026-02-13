@@ -10,7 +10,7 @@ A modern desktop application for downloading and managing audio and video conten
 
 Audeo is a user-friendly application built with Python and Toga that enables users to download audio and video content from various online sources. The application provides a queue-based management system, download tracking, and a clean graphical interface for managing your media library.
 
-**Version:** 0.3.0  
+**Version:** 0.4.0  
 **Python:** >= 3.10
 
 ## Features
@@ -394,5 +394,5 @@ Users are encouraged to:
 ---
 
 **Project Home:** Audeo - Audio and Video Downloader  
-**Last Updated:** February 7, 2026  
-**Version:** 0.3.0
+**Last Updated:** February 13, 2026  
+**Version:** 0.4.0

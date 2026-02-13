@@ -1,5 +1,37 @@
 # Audeo Release Notes
 
+## 0.4.0 (13 Feb 2026)
+
+### 🏗️ Architecture Improvements
+- **🔧 Robust Navigation System**: Implemented language-independent view navigation
+  - Added `ViewName` enum for type-safe view identifiers
+  - Replaced hardcoded French strings with constants
+  - Enhanced maintainability and future extensibility
+
+### 🌍 Internationalization Enhancements
+- **📝 Complete String Translation**: All remaining hardcoded strings now use translation system
+  - Fixed untranslated error messages in `widgets.py`
+  - Updated error dialogs in `FinishedDownloadCard`
+  - Enhanced video info view with proper translations
+
+### 🔒 Security & Validation
+- **🛡️ Proxy URL Validation**: Added comprehensive proxy URL format validation
+  - Validates http/https scheme requirements
+  - Checks hostname presence and port validity (1-65535)
+  - Automatic correction with user-friendly error handling
+
+### 📦 Technical Changes
+- **🆕 Constants Module**: Created dedicated `constants.py` for application-wide constants
+- **🔨 Code Quality**: Improved type safety and reduced language dependencies
+- **✅ Testing**: All changes validated with compilation and runtime tests
+
+### 🐛 Bug Fixes
+- Fixed navigation system dependency on translated strings
+- Resolved untranslated error messages throughout the application
+- Improved proxy configuration validation and error handling
+
+---
+
 ## 0.3.0 (07 Feb 2026)
 
 ### � Major Features
