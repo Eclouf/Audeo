@@ -89,6 +89,77 @@ python devscripts/build.py --debug
 - **Linux**: `dist/Audeo` + `audeo-linux-launcher.sh`
 - **macOS**: `dist/Audeo.app`
 
+## Installer / Packaging (Release Assets)
+
+The in-app updater can download and open the best asset for your platform.
+For the cleanest update flow, publish installer-style assets for Windows/macOS and an AppImage for Linux.
+
+### Windows: Inno Setup installer (.exe)
+
+1. Build the app with PyInstaller:
+
+```bash
+python build_multiplatform.py --platform windows
+```
+
+2. Install Inno Setup on Windows (Inno Setup Compiler).
+
+3. Compile the installer script:
+
+- Inno script: `installer/windows/Audeo.iss`
+- Output: `dist/Audeo-Setup-<version>.exe`
+
+You can compile from the Inno Setup GUI, or via CLI with `ISCC.exe`.
+
+### macOS: DMG
+
+Recommended release asset: `Audeo-<version>.dmg` containing `Audeo.app`.
+
+Common approach:
+- Create `dist/Audeo.app` via the macOS build.
+
+1. Install a DMG creator (example with `create-dmg`):
+
+```bash
+# Homebrew
+brew install create-dmg
+```
+
+2. Create the DMG from the built `.app`:
+
+```bash
+VERSION=0.4.0
+
+# Ensure the app bundle exists
+ls -la dist/Audeo.app
+
+# Create a DMG containing Audeo.app
+create-dmg \
+  --volname "Audeo" \
+  --window-pos 200 120 \
+  --window-size 800 400 \
+  --icon-size 100 \
+  --app-drop-link 600 185 \
+  "dist/Audeo-${VERSION}.dmg" \
+  "dist/Audeo.app"
+```
+
+3. Upload `dist/Audeo-<version>.dmg` to GitHub Releases.
+
+### Linux: AppImage
+
+Recommended release asset: `Audeo-<version>.AppImage`.
+
+If you publish an AppImage, the updater can download it and open it directly.
+
+## Recommended Release Asset Names
+
+Publish these assets in GitHub Releases:
+
+- **Windows**: `Audeo-Setup-<version>.exe`
+- **macOS**: `Audeo-<version>.dmg`
+- **Linux**: `Audeo-<version>.AppImage`
+
 ### Traditional Build
 - **Windows**: `dist/Audeo.exe`
 - **Linux/macOS**: `dist/Audeo`

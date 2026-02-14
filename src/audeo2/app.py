@@ -13,6 +13,7 @@ from typing import Optional, List
 from urllib.parse import urlparse
 from urllib.request import urlopen
 from urllib.request import urlretrieve
+import webbrowser
 
 import toga
 from toga.style import Pack
@@ -25,8 +26,9 @@ from .widgets import DownloadCard, DownloadCardModel, FinishedDownloadCard
 from .views import DownloadsView, FinishedDownloadsView, VideoInfoView, SettingsView
 from .settings import AppSettings, load_settings, save_settings
 from .ffmpeg import FFmpegManager
-from .i18n import i18n
+from .i18n import i18n, _
 from .constants import ViewName
+from . import update as updater
 
 FRAME_COLOR = "#d3d3d3"
 FRAME_THICKNESS = 1.5
@@ -96,11 +98,20 @@ class Audeo2App(toga.App):
                 size = 49
             
             icon_path = icons_dir / f"{icon_name}-24.png"
-            return toga.Button(
-                icon=toga.Icon(str(icon_path)),
-                on_press=action,
-                style=Pack(margin=1, width=size, height=size)
-            )
+            icon = None
+            try:
+                if icon_path.exists():
+                    icon = toga.Icon(str(icon_path))
+            except Exception:
+                icon = None
+
+            kwargs = {
+                "on_press": action,
+                "style": Pack(margin=1, width=size, height=size),
+            }
+            if icon is not None:
+                kwargs["icon"] = icon
+            return toga.Button(**kwargs)
 
         self.nav_btn_downloads = icon_button("download", self._go_downloads)  
         
@@ -109,17 +120,32 @@ class Audeo2App(toga.App):
         self.nav_btn_finished = icon_button("list_end", self._go_finished)
         
         self.nav_btn_settings = icon_button("settings", self._go_settings)
+        
+        self.nav_btn_update = icon_button("update", self._go_update)
     
         self.nav_box.add(self.nav_btn_downloads)
         self.nav_box.add(self.nav_btn_info)
         self.nav_box.add(self.nav_btn_finished)
         self.nav_box.add(self.nav_btn_settings)
+        self.nav_box.add(toga.Box(style=Pack(flex=1)))
+        self.nav_box.add(self.nav_btn_update)
 
         # Créer les vues
         self.downloads_view = DownloadsView(self)
         self.finished_downloads_view = FinishedDownloadsView(self)
         self.video_info_view = VideoInfoView(self)
         self.settings_view = SettingsView(self)
+
+        try:
+            self.commands.add(
+                toga.Command(
+                    self._cmd_check_updates,
+                    text=_("Check for updates..."),
+                    group=toga.Group.HELP,
+                )
+            )
+        except Exception:
+            pass
 
         # Créer le manager après avoir créé les vues
         self.manager = self._build_manager()
@@ -374,6 +400,162 @@ class Audeo2App(toga.App):
 
     def _go_settings(self, widget: toga.Button) -> None:
         self._show_view(ViewName.SETTINGS)
+        
+    def _go_update(self, widget: toga.Button) -> None:
+        self._cmd_check_updates(widget)
+
+    def _cmd_check_updates(self, widget) -> None:
+        try:
+            asyncio.create_task(self._check_for_updates())
+        except Exception:
+            pass
+
+    async def _check_for_updates(self) -> None:
+        repo = "Eclouf/Audeo"
+        releases_page_url = f"https://github.com/{repo}/releases"
+
+        def _do_check() -> updater.UpdateCheckResult:
+            return updater.check_for_updates(repo=repo, current_version=str(getattr(self, "version", "")))
+
+        try:
+            result = await self.loop.run_in_executor(None, _do_check)
+        except Exception as e:
+            msg = (
+                f"{_('Unable to check updates')}: {e}\n\n"
+                f"{_('Open the releases page instead?')}\n{releases_page_url}"
+            )
+            try:
+                ok = await self.main_window.dialog(toga.QuestionDialog(_("Updates"), msg))
+            except Exception:
+                ok = False
+            if ok:
+                try:
+                    webbrowser.open(releases_page_url)
+                except Exception:
+                    pass
+            return
+
+        current_display = updater.normalize_version_str(result.current_version) or str(result.current_version)
+        latest_display = updater.normalize_version_str(result.latest_tag) or str(result.latest_tag)
+
+        if result.is_update_available:
+            if result.asset_url:
+                msg = (
+                    f"{_('A new version is available')}: {latest_display}\n"
+                    f"{_('Current version')}: {current_display}\n\n"
+                    f"{_('Download and open the installer?')}"
+                )
+                try:
+                    ok = await self.main_window.dialog(toga.QuestionDialog(_("Updates"), msg))
+                except Exception:
+                    ok = False
+
+                if ok:
+                    await self._download_update_asset(result.asset_url)
+                else:
+                    # User cancelled download; offer opening releases page.
+                    try:
+                        webbrowser.open(releases_page_url)
+                    except Exception:
+                        pass
+            else:
+                msg = (
+                    f"{_('A new version is available')}: {latest_display}\n"
+                    f"{_('Current version')}: {current_display}\n\n"
+                    f"{_('Open download page?')}"
+                )
+                try:
+                    ok = await self.main_window.dialog(toga.QuestionDialog(_("Updates"), msg))
+                except Exception:
+                    ok = False
+                if ok:
+                    try:
+                        updater.open_updates_page(result.open_url)
+                    except Exception:
+                        pass
+        else:
+            msg = (
+                f"{_('You are up to date')}\n"
+                f"{_('Current version')}: {current_display}\n"
+                f"{_('Latest version')}: {latest_display or '-'}"
+            )
+            try:
+                await self.main_window.dialog(toga.InfoDialog(_("Updates"), msg))
+            except Exception:
+                pass
+
+    async def _download_update_asset(self, asset_url: str) -> None:
+        filename = updater.asset_filename_from_url(asset_url)
+        cache_dir = Path(str(self.paths.cache))
+
+        progress_window = toga.Window(title=_("Downloading update"), size=(520, 160))
+        status_label = toga.Label(_("Downloading..."), style=Pack(margin=(10, 10, 6, 10)))
+        details_label = toga.Label(filename, style=Pack(margin=(0, 10, 6, 10)))
+        progress_bar = toga.ProgressBar(max=100, value=0, style=Pack(margin=(0, 10, 10, 10)))
+
+        box = toga.Box(style=Pack(direction="column", flex=1))
+        box.add(status_label)
+        box.add(details_label)
+        box.add(progress_bar)
+        progress_window.content = box
+        progress_window.show()
+
+        def on_progress(downloaded: int, total: int | None) -> None:
+            try:
+                if total and total > 0:
+                    pct = int((downloaded / total) * 100)
+                    pct = max(0, min(100, pct))
+                    progress_bar.value = pct
+                    details_label.text = f"{filename} ({pct}%)"
+                else:
+                    # Unknown size: show an indeterminate-ish progress by clamping.
+                    progress_bar.value = min(99, progress_bar.value + 1)
+                    details_label.text = filename
+            except Exception:
+                pass
+
+        def safe_on_progress(downloaded: int, total: int | None) -> None:
+            self.loop.call_soon_threadsafe(on_progress, downloaded, total)
+
+        try:
+            downloaded_path = await self.loop.run_in_executor(
+                None,
+                lambda: updater.download_and_open_update_asset(
+                    asset_url=asset_url,
+                    cache_dir=cache_dir,
+                    on_progress=safe_on_progress,
+                ),
+            )
+        except Exception as e:
+            try:
+                progress_window.close()
+            except Exception:
+                pass
+            try:
+                await self.main_window.dialog(
+                    toga.ErrorDialog(_("Error"), f"{_('Unable to download update')}: {e}")
+                )
+            except Exception:
+                pass
+            return
+
+        try:
+            progress_bar.value = 100
+            status_label.text = _("Download complete")
+            details_label.text = str(downloaded_path)
+        except Exception:
+            pass
+
+        # Give UI a moment to refresh.
+        try:
+            await asyncio.sleep(0.3)
+        except Exception:
+            pass
+
+        try:
+            progress_window.close()
+        except Exception:
+            pass
 
     def _show_view(self, name: ViewName) -> None:
         self.content.clear()
