@@ -1,5 +1,36 @@
 # Audeo Release Notes
 
+## 0.5.0 (14 Feb 2026)
+
+### 🚀 Major Features
+- **🔄 Auto-Update System**: Complete automatic update mechanism
+  - Added comprehensive `update.py` module with GitHub API integration
+  - Multi-platform asset detection (Windows .exe/.msi, macOS .dmg, Linux .AppImage)
+  - Version comparison and update availability checking
+  - Built-in download manager with progress tracking
+  - Cross-platform file opening for update installers
+
+### 📦 Technical Changes
+- **🆕 Update Module**: New `update.py` with 278 lines of robust update functionality
+  - `UpdateCheckResult` dataclass for structured update information
+  - Resilient GitHub API fetching with multiple fallback strategies
+  - Platform-specific asset scoring and selection
+  - Download progress callbacks and error handling
+  - Cross-platform file operations (Windows Explorer, macOS Finder, Linux xdg-open)
+
+### 🔧 Improvements
+- **🛡️ Error Resilience**: Enhanced GitHub API handling with multiple fallback strategies
+- **🎯 Smart Asset Selection**: Platform-aware asset prioritization (installers > portable)
+- **📊 Progress Tracking**: Real-time download progress with chunked transfers
+- **🌐 Cross-Platform**: Native file manager integration for all supported platforms
+
+### 🐛 Bug Fixes
+- Improved version parsing consistency across different version string formats
+- Enhanced error handling for network requests and API failures
+- Better timeout management for update downloads
+
+---
+
 ## 0.4.0 (13 Feb 2026)
 
 ### 🏗️ Architecture Improvements
