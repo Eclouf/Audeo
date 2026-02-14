@@ -3,10 +3,12 @@ README.md
 pyproject.toml
 src/audeo2/__init__.py
 src/audeo2/app.py
+src/audeo2/constants.py
 src/audeo2/download_manager.py
 src/audeo2/ffmpeg.py
 src/audeo2/i18n.py
 src/audeo2/settings.py
+src/audeo2/update.py
 src/audeo2/widgets.py
 src/audeo2/views/__init__.py
 src/audeo2/views/downloads.py

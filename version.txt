@@ -3,8 +3,8 @@
 
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(0, 4, 0, 0),
-    prodvers=(0, 4, 0, 0),
+    filevers=(0, 5, 0, 0),
+    prodvers=(0, 5, 0, 0),
     mask=0x3f,
     flags=0x0,
     OS=0x4,
@@ -19,10 +19,10 @@ VSVersionInfo(
           '040904b0',
           [StringStruct('CompanyName', 'Eclouf'),
           StringStruct('ProductName', 'Audeo-2'),
-          StringStruct('ProductVersion', '0.4.0'),
+          StringStruct('ProductVersion', '0.5.0'),
           StringStruct('InternalName', 'audeo2'),
           StringStruct('OriginalFilename', 'Audeo-2.exe'),
-          StringStruct('FileVersion', '0.4.0.0'),
+          StringStruct('FileVersion', '0.5.0.0'),
           StringStruct('FileDescription', 'Audeo is a user-friendly application for downloading audio and video content from various online sources'),
           StringStruct('LegalCopyright', 'Copyright © 2026 Eclouf'),
           StringStruct('LegalTrademarks', '')])

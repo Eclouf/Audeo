@@ -10,7 +10,7 @@ A modern desktop application for downloading and managing audio and video conten
 
 Audeo is a user-friendly application built with Python and Toga that enables users to download audio and video content from various online sources. The application provides a queue-based management system, download tracking, and a clean graphical interface for managing your media library.
 
-**Version:** 0.4.0  
+**Version:** 0.5.0  
 **Python:** >= 3.10
 
 ## Features
@@ -23,7 +23,7 @@ Audeo is a user-friendly application built with Python and Toga that enables use
 - ⚡ **Direct Download**: Launch downloads directly from the information view after analysis
 - ✅ **Download History**: Track completed downloads with a finished items view
 - ⚙️ **Configurable Settings**: Customize download options, proxy settings, and application preferences
-- 🌐 **Proxy Support**: Full proxy configuration with authentication support for both analysis and downloads
+- 🔄 **Auto-Update System**: Automatic update checking and installation with multi-platform support
 - � **Multi-language Support**: Full internationalization with support for 8 languages (English, French, Spanish, Italian, Portuguese, Polish, Russian, German)
 - � **Modern UI**: Clean and intuitive user interface built with Toga
 - 📊 **Download Management**: Monitor active downloads in real-time
@@ -35,8 +35,10 @@ audeo/
 ├── src/audeo2/                      # Main package
 │   ├── __init__.py                  # Package initialization
 │   ├── app.py                       # Application entry point and main window
+│   ├── constants.py                  # Application constants and enums
 │   ├── download_manager.py          # Core download management logic
 │   ├── settings.py                  # Application configuration and constants
+│   ├── update.py                    # Auto-update system with GitHub API integration
 │   ├── widgets.py                   # Reusable UI components
 │   ├── ressources/                  # Asset files
 │   │   └── pictures/
@@ -62,7 +64,10 @@ audeo/
 ├── README.md                        # This file
 ├── CHANGELOG                        # Version history
 ├── LICENSE                          # License information
-└── convert_cli_to_ytdlp.py         # Utility script for conversion
+├── convert_cli_to_ytdlp.py         # Utility script for conversion
+└── installer/                       # Installation packages
+    └── windows/
+        └── Audeo.iss               # Windows Inno Setup installer script
 ```
 
 ## Core Components
@@ -394,5 +399,5 @@ Users are encouraged to:
 ---
 
 **Project Home:** Audeo - Audio and Video Downloader  
-**Last Updated:** February 13, 2026  
-**Version:** 0.4.0
+**Last Updated:** February 14, 2026  
+**Version:** 0.5.0
