@@ -734,7 +734,7 @@ class Audeo2App(toga.App):
         download_dir = Path(self.download_dir)
         size_text = "-"
         
-        self.downloads_view.log_info(f"Téléchargement terminé pour: {card.title_label.text}")
+        self.downloads_view.log_info(f"{_("Download finished")}: {card.title_label.text}")
 
         finished_card = FinishedDownloadCard(title=card.title_label.text, size_text=size_text, file_path=download_dir)
         finished_card.set_app_reference(self)  # Définir la référence à l'application
@@ -789,7 +789,7 @@ def main() -> Audeo2App:
         formal_name="Audeo-2",
         app_id="com.audeo.audeo2",
         app_name="Audeo-2",
-        version="0.4.0",
+        version="0.5.0",
         author="Eclouf",
         description=DESCRIPTION,
         icon="ressources/audeo.png",

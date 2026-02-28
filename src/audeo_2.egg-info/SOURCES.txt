@@ -7,6 +7,7 @@ src/audeo2/constants.py
 src/audeo2/download_manager.py
 src/audeo2/ffmpeg.py
 src/audeo2/i18n.py
+src/audeo2/options_formatter.py
 src/audeo2/settings.py
 src/audeo2/update.py
 src/audeo2/widgets.py
