@@ -18,13 +18,14 @@ class SettingsView:
         self.app = app
 
         self._metadata_example_rules = (
-            "# Parsing des métadonnées\n"
-            "artist:(.+)\n"
-            'description:(Composer: ([^\\n]+))"\n\n'
-            "album_artist:(?s)(.+)\n"
-            "Audeo, v 1.0':(?s)(.+)\n\n"
-            "%(playlist_index)s /%(playlist_count)s':(?s)(.+)\n"
-            "description:(Vol\\. ([^\\n]+))\n"
+            """# Parsing des métadonnées
+
+album_artist:(?s)(?P<album_artist>.+)
+Audeo, v 1.0:(?s)(?P<meta_comment>.+)
+%(playlist_index)s /%(playlist_count)s:(?s)(?P<track_number>.+)
+description:(Composer: (?P<composer>[^\\n]+))
+description:(Vol\\.\\s+(?P<volume>[^\\n]+))
+"""
         )
 
         # Charger l'icône en premier (avant _build_general)

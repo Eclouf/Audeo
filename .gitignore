@@ -426,3 +426,6 @@ src/audeo/resources/ffmpeg/windows-x64/
 src/audeo/resources/ffmpeg/windows-arm64/
 src/audeo/resources/ffmpeg/macos-x64/
 src/audeo/resources/ffmpeg/macos-arm64/
+
+# Test files
+test_ydl_opts.py

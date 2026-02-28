@@ -228,6 +228,24 @@ msgstr "Titre: {}"
 msgid "Thumbnail: {}"
 msgstr "Vignette: {}"
 
+msgid "Post-processing..."
+msgstr "Post-traitement..."
+
+msgid "Extracting audio..."
+msgstr "Extraction audio..."
+
+msgid "Adding metadata..."
+msgstr "Ajout des métadonnées..."
+
+msgid "Embedding thumbnail..."
+msgstr "Intégration de la miniature..."
+
+msgid "Processing thumbnail..."
+msgstr "Traitement de la miniature..."
+
+msgid "Processing..."
+msgstr "Traitement..."
+
 msgid "Estimated size: {}"
 msgstr "Taille estimée: {}"
 

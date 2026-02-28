@@ -74,14 +74,20 @@ class DownloadCard(toga.Box):
         self.progress = toga.ProgressBar(max=1.0, style=toga.style.Pack(margin_top=6, flex=1))
         self.progress.value = 0.0
         
+        # Variables pour l'animation du post-traitement
+        self._post_processing_animation = None
+        self._is_post_processing = False
+        
         # Conteneur pour les boutons de contrôle
         self.controls_box = toga.Box(style=toga.style.Pack(direction="column", margin_top=4))
         
         self.pause_btn = toga.Button(icon=self._pause, on_press=self.on_pause, style=toga.style.Pack(margin=3))
         self.stop = toga.Button(icon=self._stop, on_press=self.on_stop, style=toga.style.Pack(margin=3))
+        self.post_processing_anim = toga.ActivityIndicator(style=toga.style.Pack(margin=3))
         
         self.controls_box.add(self.pause_btn)
         self.controls_box.add(self.stop)
+        self.controls_box.add(self.post_processing_anim)
         
         self.task_id = model.task_id
         self.app = None  # Sera défini par l'application
@@ -156,7 +162,17 @@ class DownloadCard(toga.Box):
             self.status_label.text = _("Paused")
         elif status == "preparing":
             self.status_label.text = _("Preparing")
+        elif status == "post_processing":
+            self.status_label.text = _("Post-processing...")
+            # Démarrer l'animation de la barre de progression
+            if not self._is_post_processing:
+                self._is_post_processing = True
+                self._start_post_processing_animation()
         else:
+            # Arrêter l'animation si on n'est plus en post-traitement
+            if self._is_post_processing:
+                self._is_post_processing = False
+                self._stop_post_processing_animation()
             self.status_label.text = status
 
     def mark_error(self, message: str) -> None:
@@ -231,6 +247,22 @@ class DownloadCard(toga.Box):
     def set_app_reference(self, app) -> None:
         """Définit la référence à l'application principale"""
         self.app = app
+
+    def _start_post_processing_animation(self) -> None:
+        """Démarre l'animation de la barre de progression pour le post-traitement"""
+        if self._is_post_processing:
+            return
+        
+        self._is_post_processing = True
+        self._post_processing_animation = True
+        self.post_processing_anim.start()
+    
+    def _stop_post_processing_animation(self) -> None:
+        """Arrête l'animation de post-traitement"""
+        self._is_post_processing = False
+        self._post_processing_animation = None
+        # Remettre la barre à 100% quand le post-traitement est terminé
+        self.post_processing_anim.stop()
 
 
 class FinishedDownloadCard(toga.Box):

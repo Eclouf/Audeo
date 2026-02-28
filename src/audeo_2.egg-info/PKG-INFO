@@ -1,11 +1,11 @@
 Metadata-Version: 2.4
 Name: audeo-2
-Version: 0.5.0
+Version: 0.6.0
 Summary: Audeo-2
 Requires-Python: >=3.10
 License-File: LICENSE
 Requires-Dist: toga>=0.4.5
-Requires-Dist: yt-dlp>=2026.01.29
+Requires-Dist: yt-dlp>2026.01.29
 Requires-Dist: pillow>=10.0.0
 Requires-Dist: imageio-ffmpeg>=0.5.0
 Dynamic: license-file

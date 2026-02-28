@@ -47,8 +47,8 @@ msgstr "Polaco"
 msgid "Downloads"
 msgstr "Descargas"
 
-msgid "Finished"
-msgstr "Completados"
+msgid "Post-processing..."
+msgstr "Post-procesando..."
 
 msgid "Paused"
 msgstr "Pausado"

@@ -29,8 +29,23 @@ msgstr "English"
 msgid "Downloads"
 msgstr "Downloads"
 
-msgid "Finished"
-msgstr "Finished"
+msgid "Post-processing..."
+msgstr "Post-processing..."
+
+msgid "Extracting audio..."
+msgstr "Extracting audio..."
+
+msgid "Adding metadata..."
+msgstr "Adding metadata..."
+
+msgid "Embedding thumbnail..."
+msgstr "Embedding thumbnail..."
+
+msgid "Processing thumbnail..."
+msgstr "Processing thumbnail..."
+
+msgid "Processing..."
+msgstr "Processing..."
 
 msgid "Video Info"
 msgstr "Video Info"

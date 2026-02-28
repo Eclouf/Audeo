@@ -47,8 +47,8 @@ msgstr "Polski"
 msgid "Downloads"
 msgstr "Pobieranie"
 
-msgid "Finished"
-msgstr "Ukończone"
+msgid "Post-processing..."
+msgstr "Przetwarzanie końcowe..."
 
 msgid "Paused"
 msgstr "Wstrzymane"

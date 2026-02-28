@@ -47,8 +47,8 @@ msgstr "Польский"
 msgid "Downloads"
 msgstr "Загрузки"
 
-msgid "Finished"
-msgstr "Завершено"
+msgid "Post-processing..."
+msgstr "Постобработка..."
 
 msgid "Paused"
 msgstr "На паузе"

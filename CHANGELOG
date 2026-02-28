@@ -1,5 +1,35 @@
 # Audeo Release Notes
 
+## 0.6.0 (28 Feb 2026)
+
+### 🏗️ Major Refactoring
+- **🔧 OptionsFormatter Extraction**: Extract OptionsFormatter class from DownloadManager for better separation of concerns
+  - Move yt-dlp options generation logic to dedicated `options_formatter.py` module
+  - Simplify DownloadManager to focus on download orchestration
+  - Improve code maintainability and testability
+
+### 🐛 Critical Fixes
+- **⚡ Concurrency Issues**: Fix deadlock risk in progress hook with timeout-based lock acquisition
+- **�️ Thumbnail Validation**: Add proper error handling for thumbnail validation
+- **🧹 Memory Optimization**: Clean up unused imports to reduce memory footprint
+- **🌍 Internationalization**: Standardize error messages to use i18n function
+- **🎬 Animation State**: Fix inconsistent animation state tracking in post-processing
+
+### 📦 Technical Changes
+- **🆕 OptionsFormatter Module**: New dedicated module for yt-dlp options generation
+- **🆕 DownloadModels Module**: New data classes for download management with DownloadProgress and DownloadTask
+- **🔨 Code Organization**: Improved separation of concerns between modules
+- **🛡️ Thread Safety**: Enhanced concurrency handling with proper lock management
+- **📊 Error Handling**: Standardized error message formatting across the application
+
+### 🔧 Improvements
+- **🎯 Better Architecture**: Cleaner code structure with focused responsibilities
+- **⚡ Performance**: Reduced memory usage and improved thread safety
+- **🔍 Maintainability**: Easier to test and modify individual components
+- **🌐 Consistency**: Uniform error handling and internationalization
+
+---
+
 ## 0.5.0 (14 Feb 2026)
 
 ### 🚀 Major Features
