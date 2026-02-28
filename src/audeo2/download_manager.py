@@ -25,7 +25,7 @@ from .download_models import DownloadProgress, DownloadTask
 from .i18n import _
 
 class YdlLogHandler(logging.Handler):
-    """Handler personnalisé pour rediriger les logs yt-dlp vers le terminal"""
+    """Handler presonal for yt-dlp"""
     
     def __init__(self, downloads_view):
         super().__init__()
@@ -33,7 +33,7 @@ class YdlLogHandler(logging.Handler):
         self.setLevel(logging.DEBUG)
     
     def emit(self, record):
-        """Émet un message de log vers le terminal"""
+        """Handle the logging"""
         try:
             message = self.format(record)
             if self.downloads_view:
@@ -94,7 +94,7 @@ class DownloadManager:
         
         # Utiliser la vue de téléchargement existante
         if downloads_view is None:
-            raise ValueError("downloads_view est requis pour DownloadManager")
+            raise ValueError("Downloads view is required for DownloadManager")
         
         # Créer un handler personnalisé pour rediriger vers le terminal
         self._ydl_handler = None
@@ -142,7 +142,7 @@ class DownloadManager:
                     self._downloads_view.log_info(_("Download {} marked for cancellation").format(task_id))
                     
     def pause_download(self, task_id: str) -> None:
-        """Met en pause un téléchargement spécifique"""
+        """Pauses a specific download"""
         with self._lock:
             task = self._tasks.get(task_id)
             if task:
@@ -151,7 +151,7 @@ class DownloadManager:
                     self._downloads_view.log_info(_("Download {} paused").format(task_id))
                     
     def resume_download(self, task_id: str) -> None:
-        """Reprend un téléchargement spécifique"""
+        """Resumes a specific download"""
         with self._lock:
             task = self._tasks.get(task_id)
             if task:
@@ -160,12 +160,12 @@ class DownloadManager:
                     self._downloads_view.log_info(_("Download {} resumed").format(task_id))
 
     def submit(self, *, url: str, output_dir: Path, kind: str, settings: AppSettings) -> list[DownloadTask]:
-        """Télécharge une URL ou une playlist complète"""
-        # Démarrer l'animation immédiatement dans le thread principal
+        """Downloads a URL or a complete playlist"""
+        # Start the animation immediately in the main thread
         self._downloads_view.process_anim.start()
         self._downloads_view.log_info(_("URL detection in progress..."))
         
-        # Lancer la détection dans un thread séparé pour ne pas bloquer l'interface
+        # Launch detection in a separate thread to avoid blocking the interface
         import threading
         
         def _detect_and_submit():
@@ -173,11 +173,11 @@ class DownloadManager:
                 is_playlist = False
                 info = None
                 try:
-                    # Détection simple avec yt-dlp uniquement
+                    # Simple detection with yt-dlp only
                     options = {
                         'quiet': True,
-                        'extract_flat': 'in_playlist',  # Optimisé pour les playlists
-                        'noplaylist': False,  # Garder la playlist
+                        'extract_flat': 'in_playlist',  # Optimized for playlists
+                        'noplaylist': False,  # Keep the playlist
                         'simulate': True,
                         'skip_download': True,
                     }
@@ -185,7 +185,7 @@ class DownloadManager:
                     with yt_dlp.YoutubeDL(options) as ydl:
                         info = ydl.extract_info(url, download=False)
                         
-                        # Détection par yt-dlp
+                        # Detection playlist yt-dlp
                         is_playlist = (
                             info.get("ie_key") == "Playlist" or 
                             info.get('_type') == 'playlist' or 
@@ -200,10 +200,10 @@ class DownloadManager:
                         print(_("Single video detected"))
                         
                 except Exception as e:
-                    # Erreur de détection - logger simplement et arrêter
+                    # Detection error - simply log and stop
                     self._downloads_view.log_error(_("Detection error: {}").format(str(e)))
                     
-                    # Afficher une fenêtre de dialogue d'erreur simple
+                    # Show an error dialog
                     if self._main_window:
                         try:
                             import asyncio
@@ -211,27 +211,27 @@ class DownloadManager:
                                 title=_("Detection error"),
                                 message=_("Error during playlist detection:\n\n{}\n\nProcess stopped.").format(str(e))
                             )
-                            # Planifier l'affichage du dialogue sur le thread principal avec gestion d'erreurs
+                            # Schedule dialog display on the main thread with error handling
                             if hasattr(self._main_window, 'app') and hasattr(self._main_window.app, 'loop'):
                                 def safe_show_dialog():
                                     try:
                                         asyncio.create_task(self._main_window.dialog(dialog))
                                     except Exception as dialog_error:
-                                        # Logger l'erreur de dialogue silencieusement
+                                        # Silently log dialog error
                                         if self._downloads_view:
                                             self._downloads_view.log_error(_("Dialog error: {}").format(str(dialog_error)))
                                 
                                 self._main_window.app.loop.call_soon_threadsafe(safe_show_dialog)
                         except Exception as outer_error:
-                            # En cas d'erreur avec le dialogue, juste logger
+                            # Log any dialog error, regardless of language
                             if self._downloads_view:
                                 self._downloads_view.log_error(_("Dialog setup error: {}").format(str(outer_error)))
                     
-                    # Arrêter le processus dès la première erreur
+                    # Stop the process as soon as an error occurs
                     self._downloads_view.process_anim.stop()
-                    return None  # Retourner None pour indiquer une erreur fatale
+                    return None  # Return None to indicate a fatal error
                 
-                # Créer les tâches
+                # Create tasks
                 tasks = []
                 if is_playlist and settings.general.download_playlist:
                     print(_("Processing playlist"))
@@ -252,10 +252,10 @@ class DownloadManager:
                     final_output_dir = output_dir
                     tasks = [self._task(url, final_output_dir, kind, settings, False)]
                 
-                # Arrêter l'animation de détection
+                # Stop the detection animation
                 self._downloads_view.process_anim.stop()
                 
-                # Notifier le thread principal que les tâches sont prêtes
+                # Notify the main thread that tasks are ready
                 if self._on_tasks_ready:
                     if hasattr(self._main_window, 'app') and hasattr(self._main_window.app, 'loop'):
                         self._main_window.app.loop.call_soon_threadsafe(
@@ -267,7 +267,7 @@ class DownloadManager:
                 if self._downloads_view:
                     self._downloads_view.log_error(_("Error: {}").format(str(e)))
                 
-                # Afficher une fenêtre de dialogue d'erreur simple
+                # Show an error dialog
                 if self._main_window:
                     try:
                         import asyncio
@@ -275,46 +275,46 @@ class DownloadManager:
                             title=_("Submission error"),
                             message=_("Error during download preparation:\n\n{}\n\nProcess stopped.").format(str(e))
                         )
-                        # Planifier l'affichage du dialogue sur le thread principal avec gestion d'erreurs
+                        # Schedule dialog display on the main thread with error handling
                         if hasattr(self._main_window, 'app') and hasattr(self._main_window.app, 'loop'):
                             def safe_show_dialog():
                                 try:
                                     asyncio.create_task(self._main_window.dialog(dialog))
                                 except Exception as dialog_error:
-                                    # Logger l'erreur de dialogue silencieusement
+                                    # Silently log dialog error
                                     if self._downloads_view:
                                         self._downloads_view.log_error(_("Dialog error: {}").format(str(dialog_error)))
                             
                             self._main_window.app.loop.call_soon_threadsafe(safe_show_dialog)
                     except Exception as outer_error:
-                        # En cas d'erreur avec le dialogue, juste logger
+                        # Silently log dialog setup error
                         if self._downloads_view:
                             self._downloads_view.log_error(_("Dialog setup error: {}").format(str(outer_error)))
                 
-                # Arrêter le processus dès la première erreur
+                # Stop the process as soon as an error occurs
                 if self._on_tasks_ready:
                     if hasattr(self._main_window, 'app') and hasattr(self._main_window.app, 'loop'):
                         self._main_window.app.loop.call_soon_threadsafe(
                             lambda: self._on_tasks_ready(None)
                         )
         
-        # Lancer la détection dans un thread séparé
+        # Launch detection in a separate thread
         thread = threading.Thread(target=_detect_and_submit, daemon=True)
         thread.start()
         
-        # Retourner immédiatement une liste vide pour ne pas bloquer
-        # Les vraies tâches seront créées de manière asynchrone
+        # Return an empty list immediately to avoid blocking
+        # Real tasks will be created asynchronously
         return []
     
     def _on_tasks_ready(self, tasks):
-        """Callback appelé quand les tâches sont prêtes"""
-        # Cette méthode sera appelée depuis le thread principal
-        # On peut déclencher un événement ou notifier l'application
+        """Callback called when tasks are ready"""
+            # Cette méthode sera appelée depuis le thread principal
+            # On peut déclencher un événement ou notifier l'application
         pass
         
     def _task(self, original_url: str, output_dir: Path, kind: str, settings: AppSettings, playlist: bool) -> DownloadTask:
         """
-        Crée une tâche de téléchargement pour une URL donnée
+        Creates a download task for a given URL
         """
         task = DownloadTask(
             task_id=str(uuid.uuid4()), 

@@ -10,7 +10,7 @@ A modern desktop application for downloading and managing audio and video conten
 
 Audeo is a user-friendly application built with Python and Toga that enables users to download audio and video content from various online sources. The application provides a queue-based management system, download tracking, and a clean graphical interface for managing your media library.
 
-**Version:** 0.5.0  
+**Version:** 0.6.0  
 **Python:** >= 3.10
 
 ## Features
@@ -36,6 +36,8 @@ audeo/
 │   ├── __init__.py                  # Package initialization
 │   ├── app.py                       # Application entry point and main window
 │   ├── constants.py                  # Application constants and enums
+│   ├── download_models.py            # Data classes for download management
+│   ├── options_formatter.py         # yt-dlp options generation logic
 │   ├── download_manager.py          # Core download management logic
 │   ├── settings.py                  # Application configuration and constants
 │   ├── update.py                    # Auto-update system with GitHub API integration
@@ -81,6 +83,29 @@ The main entry point of the application. This module initializes the Toga applic
 - View management
 - Event handling
 
+### download_models.py
+**New in v0.6.0** - Data classes for download management. This module defines the core data structures used throughout the application for managing downloads and tracking progress.
+
+**Key Classes:**
+- `DownloadProgress`: Tracks real-time download status, progress, and metadata
+- `DownloadTask`: Represents download jobs with configuration and state management
+
+**Key Features:**
+- Progress tracking with detailed metrics (speed, ETA, file size)
+- Playlist support with item numbering
+- Task state management (cancelled, paused)
+- Metadata extraction and thumbnail support
+
+### options_formatter.py
+**New in v0.6.0** - Dedicated module for yt-dlp options generation and configuration. This module handles the complex logic of creating yt-dlp command-line options based on user settings and download requirements.
+
+**Key Responsibilities:**
+- Format-specific option generation
+- Proxy configuration integration
+- Metadata and thumbnail options
+- Playlist handling settings
+- Custom parameter processing
+
 ### download_manager.py
 Handles all download operations and management logic. This module integrates with yt-dlp to fetch content from online sources. It manages the download queue, tracks progress, handles errors, and stores download history.
 
@@ -90,7 +115,7 @@ Handles all download operations and management logic. This module integrates wit
 - Progress tracking
 - Error handling and logging
 - Download history maintenance
-- Integration with yt-dlp
+- Integration with yt-dlp and OptionsFormatter
 
 ### settings.py
 Manages application configuration, including default paths, API endpoints, user preferences, and global constants. This module centralizes all configuration settings to ensure consistency across the application.
@@ -352,10 +377,6 @@ This project is licensed under the terms specified in the [LICENSE](LICENSE) fil
 
 See [CHANGELOG](CHANGELOG) for detailed version history and release notes.
 
-## Contributing
-
-Contributions are welcome! Please ensure code follows the existing style and includes appropriate documentation.
-
 ## Support
 
 For issues, questions, or suggestions, please open an issue on the project repository.
@@ -399,5 +420,5 @@ Users are encouraged to:
 ---
 
 **Project Home:** Audeo - Audio and Video Downloader  
-**Last Updated:** February 14, 2026  
-**Version:** 0.5.0
+**Last Updated:** February 28, 2026  
+**Version:** 0.6.0

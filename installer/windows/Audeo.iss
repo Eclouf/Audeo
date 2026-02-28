@@ -2,7 +2,7 @@
 #define MyAppExeName "Audeo.exe"
 
 ; Update these 2 lines for each release (or generate this file during CI)
-#define MyAppVersion "0.5.0"
+#define MyAppVersion "0.6.0"
 #define MyAppPublisher "Eclouf - Audeo Developer"
 
 ; Repo root relative paths
@@ -18,7 +18,7 @@ AppPublisherURL=https://github.com/Eclouf/Audeo
 AppSupportURL=https://github.com/Eclouf/Audeo/issues
 AppUpdatesURL=https://github.com/Eclouf/Audeo/releases
 AppCopyright=Copyright © 2026 Eclouf
-DefaultDirName={userappdata}\{#MyAppName}
+DefaultDirName={localappdata}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
