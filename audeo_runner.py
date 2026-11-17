@@ -57,8 +57,9 @@ if __name__ == '__main__':
         log_msg("Successfully imported main()")
         log_msg("Launching Audeo GUI...")
         app = main()
-        log_msg("App object created, starting main_loop...")
-        app.main_loop()
+        log_msg("App exited")
+        if app is not None:
+            app.mainloop()
         log_msg("Audeo exited normally")
     except Exception as e:
         log_msg(f"ERROR: {e}")

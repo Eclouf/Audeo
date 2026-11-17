@@ -429,3 +429,12 @@ src/audeo/resources/ffmpeg/macos-arm64/
 
 # Test files
 test_ydl_opts.py
+
+# Test coverage
+.coverage
+htmlcov/
+
+# Test temporary files
+tests/
+requirements-test.txt
+

@@ -11,7 +11,6 @@ from typing import Optional
 from urllib.parse import urlparse, urlunparse
 
 import yt_dlp
-import toga
 
 from .settings import AppSettings
 from .views import DownloadsView
@@ -19,7 +18,7 @@ from .i18n import _
 from .download_models import DownloadTask
 
 class OptionsFormatter:
-    def __init__(self, downloads_view: DownloadsView, main_window: toga.App = None):
+    def __init__(self, downloads_view: DownloadsView, main_window=None):
         self._downloads_view = downloads_view
         self._main_window = main_window
     
@@ -56,7 +55,7 @@ class OptionsFormatter:
             
         return base_opts
     
-    def ytdl_options(self, task: DownloadTask, info: dict = None) -> dict:
+    def ytdl_options(self, task: DownloadTask, info: dict = None) -> tuple:
         """Return the options for yt-dlp
         
         Returns:
@@ -89,9 +88,10 @@ class OptionsFormatter:
                 'write_all_thumbnails': False,  # Ne pas écrire toutes les miniatures
             })
             
-            with yt_dlp.YoutubeDL(extract_opts) as ydl:
-                info = ydl.extract_info(task.url, download=False)
-            
+            try:
+                with yt_dlp.YoutubeDL(extract_opts) as ydl:
+                    info = ydl.extract_info(task.url, download=False)
+                
                 # Gestion sécurisée des miniatures
                 thumbnail_url = info.get('thumbnail') or info.get('playlist_thumbnail')
                 
@@ -105,10 +105,32 @@ class OptionsFormatter:
                         else:
                             thumbnail_url = str(first_thumbnail) if first_thumbnail else None    
             
-                info["thumbnail"] = thumbnail_url 
-                # Vérifier si la tâche a été annulée pendant l'extraction
-            if task.cancelled:
-                raise yt_dlp.DownloadError(_("Download cancelled during metadata extraction"))
+                info["thumbnail"] = thumbnail_url
+            except (yt_dlp.DownloadError, yt_dlp.ExtractorError) as e:
+                # Gérer les erreurs spécifiques à yt-dlp
+                if task.cancelled:
+                    raise yt_dlp.DownloadError(_("Download cancelled during metadata extraction"))
+                raise yt_dlp.DownloadError(_("Metadata extraction failed: {}").format(str(e)))
+            except (ValueError, KeyError, TypeError, AttributeError) as e:
+                # Gérer les erreurs de manipulation de données
+                if task.cancelled:
+                    raise yt_dlp.DownloadError(_("Download cancelled during metadata extraction"))
+                raise yt_dlp.DownloadError(_("Data processing error during metadata extraction: {}").format(str(e)))
+            except (OSError, IOError) as e:
+                # Gérer les erreurs système/E/S
+                if task.cancelled:
+                    raise yt_dlp.DownloadError(_("Download cancelled during metadata extraction"))
+                raise yt_dlp.DownloadError(_("System error during metadata extraction: {}").format(str(e)))
+            except Exception as e:
+                # Gérer les autres erreurs inattendues (dernier recours)
+                if task.cancelled:
+                    raise yt_dlp.DownloadError(_("Download cancelled during metadata extraction"))
+                # Logger l'erreur originale pour debugging
+                logging.getLogger(__name__).error(f"Unexpected error in metadata extraction: {type(e).__name__}: {e}", exc_info=True)
+                raise yt_dlp.DownloadError(_("Unexpected error during metadata extraction: {}").format(str(e))) 
+        
+        if task.cancelled:
+            raise yt_dlp.DownloadError(_("Download cancelled during metadata extraction"))
         
         if is_playlist and g.download_playlist:
             # Cas playlist
@@ -140,10 +162,9 @@ class OptionsFormatter:
         })
         
         # Ajouter les autres options spécifiques
-        if g.overwrite:
-            ydl_opts["overwrites"] = True
-        else:
-            ydl_opts["nooverwrites"] = True
+        
+        ydl_opts["overwrites"] = g.overwrite
+        ydl_opts["ignoreerrors"] = g.ignore_errors
 
         if g.limit_rate_enabled and g.limit_rate_kib_s > 0:
             ydl_opts["ratelimit"] = int(g.limit_rate_kib_s) * 1024

@@ -1,24 +1,43 @@
 from __future__ import annotations
 
-import toga
-from toga.style import Pack
+import customtkinter as ctk
 
 from ..i18n import _
+from ..widgets import CardsBox
 
 
 class FinishedDownloadsView:
-    def __init__(self, app: toga.App) -> None:
+    def __init__(self, app) -> None:
         self.app = app
 
-        clear_btn = toga.Button(_("Clear history"), on_press=self.app._on_clear_finished, style=Pack(width=150, margin=10))
-
-        bottom_box = toga.Box(style=Pack(direction="row", margin=10))
-        bottom_box.add(toga.Box(style=Pack(flex=1)))
-        bottom_box.add(clear_btn)
-        self.cards_box = toga.Box(style=Pack(direction="column"))
-        scroller = toga.ScrollContainer(content=self.cards_box, style=Pack(flex=1, margin_top=10))
-
-        self.widget = toga.Box(style=Pack(direction="column", flex=1))
-        self.widget.add(toga.Label(_("Finished downloads"), style=Pack(font_weight="bold", align_items="center", font_size=12,margin=5)))
-        self.widget.add(scroller)
-        self.widget.add(bottom_box)
+        # Create main widget
+        self.widget = ctk.CTkFrame(app.content)
+        
+        # Title
+        title_label = ctk.CTkLabel(
+            self.widget,
+            text=_("Finished downloads"),
+            font=("CTkFont", 12, "bold")
+        )
+        title_label.pack(pady=5)
+        
+        # Scrollable area for cards
+        scroller = ctk.CTkScrollableFrame(self.widget)
+        scroller.pack(fill="both", expand=True, padx=10, pady=5)
+        
+        self.cards_box = CardsBox(scroller)
+        self.cards_box.pack(fill="both", expand=True)
+        
+        # Bottom box with clear button
+        bottom_box = ctk.CTkFrame(self.widget)
+        bottom_box.pack(fill="x", padx=10, pady=10)
+        
+        ctk.CTkLabel(bottom_box, text="").pack(side="left", expand=True)  # Spacer
+        
+        clear_btn = ctk.CTkButton(
+            bottom_box,
+            text=_("Clear history"),
+            command=self.app._on_clear_finished,
+            width=150
+        )
+        clear_btn.pack(side="right")

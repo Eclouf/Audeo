@@ -13,6 +13,7 @@ class GeneralSettings:
     output_format: str = ""  # texte libre (interprété comme format yt-dlp si non vide)
     output_template: str = "%(title)s [%(id)s].%(ext)s"
     overwrite: bool = False
+    ignore_errors: bool = False
     limit_rate_enabled: bool = False
     limit_rate_kib_s: int = 0
     concurrent_fragments: int = 1
@@ -77,6 +78,7 @@ def load_settings(config_dir: Path) -> AppSettings:
             output_format=str(_get(g, "output_format", "") or ""),
             output_template=str(_get(g, "output_template", "%(title)s [%(id)s].%(ext)s")),
             overwrite=bool(_get(g, "overwrite", False)),
+            ignore_errors=bool(_get(g, "ignore_errors", False)),
             limit_rate_enabled=bool(_get(g, "limit_rate_enabled", False)),
             limit_rate_kib_s=int(_get(g, "limit_rate_kib_s", 0) or 0),
             concurrent_fragments=int(_get(g, "concurrent_fragments", 1) or 1),

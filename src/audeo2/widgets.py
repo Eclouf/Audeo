@@ -6,7 +6,25 @@ from pathlib import Path
 from dataclasses import dataclass
 from typing import Optional
 
-import toga
+import customtkinter as ctk
+from PIL import Image as PILImage
+
+from .i18n import _
+
+
+def load_themed_icon(path, size=(24, 24)) -> Optional[ctk.CTkImage]:
+    """Charge un PNG et remplace les pixels sombres par une teinte claire (thème sombre)."""
+    try:
+        img = PILImage.open(path).convert("RGBA")
+        px = img.load()
+        for y in range(img.height):
+            for x in range(img.width):
+                r, g, b, a = px[x, y]
+                if a > 40 and r < 100 and g < 100 and b < 100:
+                    px[x, y] = (230, 230, 230, a)
+        return ctk.CTkImage(img, size=size)
+    except Exception:
+        return None
 
 
 def _fmt_bytes(n: Optional[int]) -> str:
@@ -44,6 +62,13 @@ def _fmt_speed(n: Optional[float]) -> str:
     return f"{v:.2f} {units[i]}"
 
 
+class CardsBox(ctk.CTkFrame):
+    """Conteneur de cartes avec une API .add() compatible avec l'ancien code Toga."""
+
+    def add(self, widget) -> None:
+        widget.pack(fill="x", padx=5, pady=8)
+
+
 @dataclass
 class DownloadCardModel:
     task_id: str
@@ -52,69 +77,75 @@ class DownloadCardModel:
     kind: str
 
 
-class DownloadCard(toga.Box):
-    def __init__(self, model: DownloadCardModel) -> None:
-        super().__init__(style=toga.style.Pack(direction="row", margin=5, background_color="#888888"))
+class DownloadCard(ctk.CTkFrame):
+    def __init__(self, model: DownloadCardModel, parent=None) -> None:
+        super().__init__(parent, corner_radius=10, border_width=1)
         self.model = model
 
         default_path = Path(__file__).resolve().parent / "ressources"
-        self._default_image = toga.Image(str(default_path / "default-200.png"))
-        self._play = toga.Icon(str(default_path / "pictures" / "play-24.png"))
-        self._pause = toga.Icon(str(default_path / "pictures" / "pause-24.png"))
-        self._stop = toga.Icon(str(default_path / "pictures" / "stop-24.png"))
+        
+        # Load icons
+        self._default_image = None
+        try:
+            if (default_path / "default-200.png").exists():
+                img = PILImage.open(default_path / "default-200.png")
+                self._default_image = ctk.CTkImage(img, size=(200, 120))
+        except Exception:
+            pass
+        
+        icons_dir = default_path / "pictures"
+        self._play = load_themed_icon(icons_dir / "play-24.png")
+        self._pause = load_themed_icon(icons_dir / "pause-24.png")
+        self._stop = load_themed_icon(icons_dir / "stop-24.png")
 
-        self.thumb = toga.ImageView(style=toga.style.Pack(width=200, height=120, margin=(5, 5, 5, 5)))
-        self.thumb.image = self._default_image
+        # Thumbnail
+        self.thumb = ctk.CTkLabel(self, image=self._default_image, text="", width=200, height=120)
+        self.thumb.grid(row=0, column=0, padx=8, pady=8)
 
-        self.title_label = toga.Label(model.title, style=toga.style.Pack(font_size=12, font_weight="bold"))
-        self.meta_label = toga.Label("-", style=toga.style.Pack(margin_top=2))
-        self.status_label = toga.Label(_("Preparing"), style=toga.style.Pack(margin_top=4))
-        self.percent_label = toga.Label("0%", style=toga.style.Pack(margin_top=4))
+        # Right side with info
+        right = ctk.CTkFrame(self, fg_color="transparent")
+        right.grid(row=0, column=1, sticky="nsew", padx=8, pady=8)
+        self.grid_columnconfigure(1, weight=1)
+        
+        self.title_label = ctk.CTkLabel(right, text=model.title, font=("CTkFont", 13, "bold"), anchor="w")
+        self.title_label.pack(anchor="w", fill="x", pady=(0, 2))
+        
+        self.meta_label = ctk.CTkLabel(right, text="-", anchor="w")
+        self.meta_label.pack(anchor="w", fill="x", pady=1)
+        
+        self.status_label = ctk.CTkLabel(right, text=_("Preparing"), anchor="w")
+        self.status_label.pack(anchor="w", fill="x", pady=1)
+        
+        self.percent_label = ctk.CTkLabel(right, text="0%", anchor="w")
+        self.percent_label.pack(anchor="w", fill="x", pady=1)
 
-        self.progress = toga.ProgressBar(max=1.0, style=toga.style.Pack(margin_top=6, flex=1))
-        self.progress.value = 0.0
+        self.progress = ctk.CTkProgressBar(right, height=10)
+        self.progress.pack(fill="x", pady=(4, 0))
+        self.progress.set(0)
         
         # Variables pour l'animation du post-traitement
         self._post_processing_animation = None
         self._is_post_processing = False
         
         # Conteneur pour les boutons de contrôle
-        self.controls_box = toga.Box(style=toga.style.Pack(direction="column", margin_top=4))
+        controls_box = ctk.CTkFrame(self, fg_color="transparent")
+        controls_box.grid(row=0, column=2, padx=8, pady=8)
+        controls_box.grid_propagate(False)
+        controls_box.configure(width=44)
         
-        self.pause_btn = toga.Button(icon=self._pause, on_press=self.on_pause, style=toga.style.Pack(margin=3))
-        self.stop = toga.Button(icon=self._stop, on_press=self.on_stop, style=toga.style.Pack(margin=3))
-        self.post_processing_anim = toga.ActivityIndicator(style=toga.style.Pack(margin=3))
+        self.pause_btn = ctk.CTkButton(controls_box, text="", image=self._pause, width=36, height=36, command=self.on_pause)
+        self.pause_btn.pack(pady=4)
         
-        self.controls_box.add(self.pause_btn)
-        self.controls_box.add(self.stop)
-        self.controls_box.add(self.post_processing_anim)
+        self.stop = ctk.CTkButton(controls_box, text="", image=self._stop, width=36, height=36, command=self.on_stop)
+        self.stop.pack(pady=4)
+        
+        self.post_processing_anim = ctk.CTkLabel(controls_box, text="⏳", font=("CTkFont", 16))
+        self.post_processing_anim.pack(pady=4)
+        self.post_processing_anim.pack_forget()  # Hide initially
         
         self.task_id = model.task_id
         self.app = None  # Sera défini par l'application
         self.is_paused = False
-
-        right = toga.Box(style=toga.style.Pack(direction="column", margin=(5, 5, 5, 5), flex=1))
-        right.add(self.title_label)
-        right.add(self.meta_label)
-        right.add(self.status_label)
-        right.add(self.percent_label)
-        right.add(self.progress)
-        
-        r_right = toga.Box(style=toga.style.Pack(direction="column", margin=(5, 5, 5, 5)))
-        r_right.add(self.controls_box)
-
-        # Conteneur principal avec cadre
-        main_container = toga.Box(
-            children=[self.thumb, right, r_right],
-            style=toga.style.Pack(
-                direction="row", 
-                margin=1.5, 
-                background_color="#f0f0f0", #couleur de fond
-                flex=1
-            )
-        )
-        
-        self.add(main_container)
 
     def update_progress(
         self,
@@ -130,8 +161,8 @@ class DownloadCard(toga.Box):
         duration: Optional[int] = None,
         uploader: Optional[str] = None,
     ) -> None:
-        self.progress.value = max(0.0, min(1.0, percent))
-        self.percent_label.text = f"{int (self.progress.value * 100)}%"
+        self.progress.set(max(0.0, min(1.0, percent)))
+        self.percent_label.configure(text=f"{int(self.progress.get() * 100)}%")
         
         # Adapter l'affichage pour les playlists
         if item_number and total_items:
@@ -146,24 +177,24 @@ class DownloadCard(toga.Box):
             if eta_seconds is not None:
                 meta_parts.append(f"ETA: {_fmt_eta(eta_seconds)}")
             
-            self.meta_label.text = " | ".join(meta_parts)
+            self.meta_label.configure(text=" | ".join(meta_parts))
         else:
             # Format standard pour les vidéos simples
-            self.meta_label.text = (
+            self.meta_label.configure(text=(
                 f"{_fmt_bytes(downloaded_bytes)} / {_fmt_bytes(total_bytes)} | "
                 f"{_fmt_speed(speed_bytes_s)} | ETA: {_fmt_eta(eta_seconds)}"
-            )
+            ))
         
         if status == "finished":
-            self.status_label.text = _("Finished")
+            self.status_label.configure(text=_("Finished"))
         elif status == "downloading":
-            self.status_label.text = f"{_('Downloading')}: {int(self.progress.value * 100)}%"
+            self.status_label.configure(text=f"{_('Downloading')}: {int(self.progress.get() * 100)}%")
         elif status == "paused":
-            self.status_label.text = _("Paused")
+            self.status_label.configure(text=_("Paused"))
         elif status == "preparing":
-            self.status_label.text = _("Preparing")
+            self.status_label.configure(text=_("Preparing"))
         elif status == "post_processing":
-            self.status_label.text = _("Post-processing...")
+            self.status_label.configure(text=_("Post-processing..."))
             # Démarrer l'animation de la barre de progression
             if not self._is_post_processing:
                 self._is_post_processing = True
@@ -173,38 +204,38 @@ class DownloadCard(toga.Box):
             if self._is_post_processing:
                 self._is_post_processing = False
                 self._stop_post_processing_animation()
-            self.status_label.text = status
+            self.status_label.configure(text=status)
 
     def mark_error(self, message: str) -> None:
-        self.status_label.text = f"{_('Error')}: {message}"
+        self.status_label.configure(text=f"{_('Error')}: {message}")
         
-    def on_pause(self, widget: toga.Button) -> None:
+    def on_pause(self) -> None:
         """Gère le clic sur le bouton pause"""
         if self.app and hasattr(self.app, 'manager'):
             try:
                 if self.is_paused:
                     # Reprendre le téléchargement
                     self.app.manager.resume_download(self.task_id)
-                    self.pause_btn.icon = self._pause
-                    self.status_label.text = f"{_('Downloading')}..."
+                    self.pause_btn.configure(image=self._pause)
+                    self.status_label.configure(text=f"{_('Downloading')}...")
                     self.is_paused = False
                 else:
                     # Mettre en pause le téléchargement
                     self.app.manager.pause_download(self.task_id)
-                    self.pause_btn.icon = self._play
-                    self.status_label.text = _("Paused")
+                    self.pause_btn.configure(image=self._play)
+                    self.status_label.configure(text=_("Paused"))
                     self.is_paused = True
             except Exception as e:
-                self.status_label.text = f"{_('Error')}: {str(e)}"
+                self.status_label.configure(text=f"{_('Error')}: {str(e)}")
                 
-    def on_stop(self, widget: toga.Button) -> None:
+    def on_stop(self) -> None:
         """Gère le clic sur le bouton d'arrêt"""
         if self.app and hasattr(self.app, 'manager'):
             try:
                 # Désactiver tous les contrôles
-                self.pause_btn.enabled = False
-                self.stop.enabled = False
-                self.status_label.text = _("Stop downloading")
+                self.pause_btn.configure(state="disabled")
+                self.stop.configure(state="disabled")
+                self.status_label.configure(text=_("Stop downloading"))
                 
                 # Arrêter le téléchargement via le manager
                 self.app.manager.cancel_download(self.task_id)
@@ -217,14 +248,14 @@ class DownloadCard(toga.Box):
                     # Attendre un peu pour que l'annulation prenne effet
                     time.sleep(0.5)
 
-                    if not (self.app and hasattr(self.app, 'loop')):
+                    if not self.app:
                         return
 
                     def _remove_card_ui() -> None:
                         if self.app and hasattr(self.app, '_cards') and hasattr(self.app, 'cards_box'):
                             try:
                                 self.app._cards.pop(self.task_id, None)
-                                self.app.cards_box.remove(self)
+                                self.destroy()
                                 if hasattr(self.app, 'downloads_view') and self.app.downloads_view:
                                     self.app.downloads_view.log_info(f"{_('Cart')} {self.task_id} {_('removed')}")
                             except Exception as e:
@@ -232,17 +263,20 @@ class DownloadCard(toga.Box):
                                     self.app.downloads_view.log_error(f"{_('Error')} {_('removing card')}: {e}")
 
                     try:
-                        self.app.loop.call_soon_threadsafe(_remove_card_ui)
-                    except Exception:
-                        pass
+                        self.app.after(0, _remove_card_ui)
+                    except Exception as e:
+                        # Log the error but don't break the card removal process
+                        if hasattr(self.app, 'downloads_view') and self.app.downloads_view:
+                            self.app.downloads_view.log_debug(f"Error scheduling UI update: {e}")
+                        # Continue with background removal anyway
                 
                 # Lancer la suppression en arrière-plan
                 threading.Thread(target=remove_card, daemon=True).start()
                 
             except Exception as e:
-                self.status_label.text = f"{_('Error')}: {str(e)}"
-                self.pause_btn.enabled = True
-                self.stop.enabled = True
+                self.status_label.configure(text=f"{_('Error')}: {str(e)}")
+                self.pause_btn.configure(state="normal")
+                self.stop.configure(state="normal")
                 
     def set_app_reference(self, app) -> None:
         """Définit la référence à l'application principale"""
@@ -255,61 +289,66 @@ class DownloadCard(toga.Box):
         
         self._is_post_processing = True
         self._post_processing_animation = True
-        self.post_processing_anim.start()
+        self.post_processing_anim.pack()  # Show the animation label
     
     def _stop_post_processing_animation(self) -> None:
         """Arrête l'animation de post-traitement"""
         self._is_post_processing = False
         self._post_processing_animation = None
         # Remettre la barre à 100% quand le post-traitement est terminé
-        self.post_processing_anim.stop()
+        self.post_processing_anim.pack_forget()  # Hide the animation label
 
 
-class FinishedDownloadCard(toga.Box):
-    def __init__(self, *, title: str, size_text: str, file_path: Optional[Path] = None) -> None:
-        super().__init__(style=toga.style.Pack(direction="row", margin=5, background_color="#888888"))
-
-        default_path = Path(__file__).resolve().parent / "ressources" / "default-200.png"
-        folder_path = Path(__file__).resolve().parent / "ressources" / "pictures"
-        path_folder = folder_path / "folder-open-24.png"
-        self._default_image = toga.Image(str(default_path))
+class FinishedDownloadCard(ctk.CTkFrame):
+    def __init__(self, *, title: str, size_text: str, file_path: Optional[Path] = None, parent=None) -> None:
+        super().__init__(parent, corner_radius=10, border_width=1)
+        
+        default_path = Path(__file__).resolve().parent / "ressources"
+        folder_path = default_path / "pictures"
         self.file_path = file_path  # Stocker le chemin du fichier
 
-        self.thumb = toga.ImageView(style=toga.style.Pack(width=120, height=68, margin=(5, 5, 5, 5)))
-        self.thumb.image = self._default_image
-        self.title_label = toga.Label(title, style=toga.style.Pack(font_size=12, font_weight="bold"))
-        self.size_label = toga.Label(size_text, style=toga.style.Pack(margin_top=4))
+        # Load default image
+        self._default_image = None
+        try:
+            if (default_path / "default-200.png").exists():
+                img = PILImage.open(default_path / "default-200.png")
+                self._default_image = ctk.CTkImage(img, size=(120, 68))
+        except Exception:
+            pass
 
-        right = toga.Box(style=toga.style.Pack(direction="column", margin=(5, 5, 5, 5)))
-        right.add(self.title_label)
-        right.add(self.size_label)
-        
-        file_button = toga.Button(icon=toga.Icon(str(path_folder)), on_press=self._show_file)
-        r_right = toga.Box(style=toga.style.Pack(direction="column", margin=(5, 5, 5, 5)))
-        r_right.add(
-            toga.Box(style=toga.style.Pack(flex=1)),
-            file_button,
-            toga.Box(style=toga.style.Pack(flex=1))
-            )
-        
-        main_container = toga.Box(
-            children=[self.thumb, right, toga.Box(style=toga.style.Pack(flex=1)), r_right],
-            style=toga.style.Pack(
-                direction="row", 
-                margin=1.5, 
-                background_color="#f0f0f0", #couleur de fond
-                flex=1
-            )
-        )
+        folder_icon = load_themed_icon(folder_path / "folder-open-24.png")
 
-        self.add(main_container)
+        self.thumb = ctk.CTkLabel(self, image=self._default_image, text="", width=120, height=68)
+        self.thumb.grid(row=0, column=0, padx=8, pady=8)
+        
+        right = ctk.CTkFrame(self, fg_color="transparent")
+        right.grid(row=0, column=1, sticky="nsew", padx=8, pady=8)
+        self.grid_columnconfigure(1, weight=1)
+        
+        self.title_label = ctk.CTkLabel(right, text=title, font=("CTkFont", 12, "bold"), anchor="w")
+        self.title_label.pack(anchor="w", fill="x", pady=(0, 2))
+        
+        self.size_label = ctk.CTkLabel(right, text=size_text, anchor="w")
+        self.size_label.pack(anchor="w", fill="x", pady=1)
+
+        r_right = ctk.CTkFrame(self, fg_color="transparent")
+        r_right.grid(row=0, column=2, padx=8, pady=8)
+        r_right.grid_propagate(False)
+        r_right.configure(width=44)
+
+        file_button = ctk.CTkButton(r_right, text="", image=folder_icon, width=36, height=36, command=self._show_file)
+
+        ctk.CTkLabel(r_right, text="").pack(expand=True)  # Spacer
+        file_button.pack(pady=4)
+        ctk.CTkLabel(r_right, text="").pack(expand=True)  # Spacer
+        
         self.app = None  # Sera défini par l'application
 
     def set_app_reference(self, app) -> None:
         """Définit la référence à l'application principale"""
         self.app = app
 
-    def _show_file(self, widget: toga.Button) -> None:
+    def _show_file(self) -> None:
         """Ouvre le dossier de destination dans l'explorateur système"""
         if self.file_path and self.file_path.exists():
             try:
@@ -344,7 +383,10 @@ class FinishedDownloadCard(toga.Box):
                             subprocess.run([fm, str(self.file_path)], check=True, timeout=5)
                             success = True
                             break
-                        except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+                        except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
+                            # Log the specific error for debugging
+                            import logging
+                            logging.getLogger(__name__).debug(f"File manager {fm} failed: {e}")
                             continue
                     
                     # Si aucun gestionnaire de fichiers n'a fonctionné, essayer xdg-open
@@ -370,7 +412,6 @@ class FinishedDownloadCard(toga.Box):
                     
             except Exception as e:
                 # En cas d'erreur, affiche un message d'erreur informatif
-                import toga
                 system = platform.system()
                 
                 if system == "Linux":
@@ -382,22 +423,9 @@ class FinishedDownloadCard(toga.Box):
                 else:
                     error_msg = f"{_('Unable to open folder')}:\n\n{str(e)}\n\n{_('Folder')}: {self.file_path}"
                 
-                dialog = toga.InfoDialog(
-                    title=_("Error"),
-                    message=error_msg
-                )
-                # Créer une tâche async pour le dialogue
-                import asyncio
-                if hasattr(self, 'app') and hasattr(self.app, 'main_window'):
-                    asyncio.create_task(self.app.main_window.dialog(dialog))
+                if hasattr(self, 'app') and self.app:
+                    self.app._show_info_dialog(_("Error"), error_msg)
         else:
             # Dossier introuvable
-            import toga
-            dialog = toga.InfoDialog(
-                title=_("Folder not found"),
-                message=f"{_('The folder no longer exists')}:\n\n{self.file_path}"
-            )
-            # Créer une tâche async pour le dialogue
-            import asyncio
-            if hasattr(self, 'app') and hasattr(self.app, 'main_window'):
-                asyncio.create_task(self.app.main_window.dialog(dialog))
+            if hasattr(self, 'app') and self.app:
+                self.app._show_info_dialog(_("Folder not found"), f"{_('The folder no longer exists')}:\n\n{self.file_path}")

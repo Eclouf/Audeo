@@ -4,180 +4,189 @@ import threading
 import time
 from io import StringIO
 from typing import Optional
-
-import toga
-from toga.style import Pack
 from pathlib import Path
 
-from ..i18n import _
+import customtkinter as ctk
+from PIL import Image as PILImage
 
-class TerminalWindow(toga.Window):
-    """Fenêtre de terminal personnalisée avec gestion du focus"""
-    
-    def _on_gain_focus(self):
-        """Gestion du focus pour éviter les erreurs"""
-        pass
+from ..i18n import _
+from ..widgets import CardsBox
+
+
+class _ProcessAnimation(ctk.CTkLabel):
+    """Label animé utilisé par DownloadManager via .start()/.stop()."""
+
+    _FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+
+    def __init__(self, master, **kwargs) -> None:
+        super().__init__(master, text="", **kwargs)
+        self._frame_index = 0
+        self._running = False
+
+    def start(self) -> None:
+        if self._running:
+            return
+        self._running = True
+        self._tick()
+
+    def stop(self) -> None:
+        self._running = False
+        self.configure(text="")
+
+    def _tick(self) -> None:
+        if not self._running:
+            return
+        self.configure(text=self._FRAMES[self._frame_index % len(self._FRAMES)])
+        self._frame_index += 1
+        self.after(80, self._tick)
 
 
 class DownloadsView:
-    def __init__(self, app: toga.App) -> None:
+    def __init__(self, app) -> None:
         self.app = app
         self._log_buffer = StringIO()
         self._log_lock = threading.Lock()
-        self._terminal_window: Optional[TerminalWindow] = None
-        self._terminal_text: Optional[toga.MultilineTextInput] = None
+        self._terminal_window: Optional[ctk.CTkToplevel] = None
+        self._terminal_text: Optional[ctk.CTkTextbox] = None
 
-        self.url_input = toga.TextInput(placeholder=_("URL ..."), style=Pack(flex=1, margin=5))
-        self.kind_select = toga.Selection(
-            items=[
-                {"name": _("video"), "value": "video"}, 
-                {"name": _("audio"), "value": "audio"}
-            ], 
-            accessor="name", 
-            style=Pack(width=130, margin=5))
-        self.kind_select.value.value = "video"
-        add_btn = toga.Button(_("Add"), on_press=self.app._on_add, style=Pack(width=70, margin=5))
-        self.process_anim = toga.ActivityIndicator(running=False, style=Pack(margin=5))
-        icons_dir = Path(__file__).resolve().parent.parent / "ressources" / "pictures"
-        terminal_icon = toga.Icon(str(icons_dir / "terminal-24.png"))
-        terminal_btn = toga.Button(icon=terminal_icon, on_press=self._show_terminal, style=Pack(margin=5))
-
-        top = toga.Box(style=Pack(direction="row"))
-        top.add(self.url_input)
-        top.add(self.kind_select)
-        top.add(add_btn)
-        top.add(self.process_anim)
-        top.add(terminal_btn)
-
-        self.cards_box = toga.Box(style=Pack(direction="column"))
+        # Create main widget
+        self.widget = ctk.CTkFrame(app.content)
         
-        # Image par défaut quand aucune carte n'est affichée
-        icons_dir = Path(__file__).resolve().parent.parent / "ressources"
-        self.default_image = toga.Image(str(icons_dir / "default.png"))
-        self.default_image_view = toga.ImageView(
-            self.default_image, 
-            style=Pack(width=80, height=80, margin_top=50)
+        # Top bar with URL input and controls
+        top_frame = ctk.CTkFrame(self.widget)
+        top_frame.pack(fill="x", padx=5, pady=5)
+        
+        self.url_input = ctk.CTkEntry(top_frame, placeholder_text=_("URL ..."))
+        self.url_input.pack(side="left", fill="x", expand=True, padx=5)
+        
+        # Valeurs d'affichage localisées, mappées sur des codes stables ("video"/"audio")
+        self._kind_display_to_code = {_("video"): "video", _("audio"): "audio"}
+        self.kind_select = ctk.CTkOptionMenu(
+            top_frame,
+            values=list(self._kind_display_to_code.keys()),
+            width=130
         )
+        self.kind_select.set(_("video"))
+        self.kind_select.pack(side="left", padx=5)
         
-        # Conteneur pour centrer l'image
-        self.center_box = toga.Box(style=Pack(direction="column", align_items="center", justify_content="center", flex=1))
-        self.center_box.add(self.default_image_view)
+        add_btn = ctk.CTkButton(top_frame, text=_("Add"), command=self.app._on_add, width=70)
+        add_btn.pack(side="left", padx=5)
         
-        # Conteneur principal qui peut contenir soit les cartes, soit l'image par défaut
-        self.main_content_box = toga.Box(style=Pack(direction="column", flex=1))
-        self.main_content_box.add(self.center_box)
+        # Process animation
+        self.process_anim = _ProcessAnimation(top_frame)
+        self.process_anim.pack(side="left", padx=5)
         
-        scroller = toga.ScrollContainer(content=self.main_content_box, style=Pack(flex=1))
+        # Terminal button
+        icons_dir = Path(__file__).resolve().parent.parent / "ressources" / "pictures"
+        terminal_icon_path = icons_dir / "terminal-24.png"
+        terminal_icon = None
+        try:
+            if terminal_icon_path.exists():
+                from ..widgets import load_themed_icon
+                terminal_icon = load_themed_icon(terminal_icon_path, size=(24, 24))
+        except Exception:
+            pass
+        
+        terminal_btn = ctk.CTkButton(
+            top_frame, 
+            text="", 
+            image=terminal_icon,
+            width=40,
+            command=self._show_terminal
+        )
+        terminal_btn.pack(side="left", padx=5)
 
-        self.widget = toga.Box(style=Pack(direction="column", flex=1))
-        self.widget.add(top)
-        self.widget.add(scroller)
+        # Scrollable area containing either the cards or the default image
+        scroller = ctk.CTkScrollableFrame(self.widget)
+        scroller.pack(fill="both", expand=True, padx=5, pady=5)
+        self.scroller = scroller
 
-    def _show_terminal(self, widget: toga.Button) -> None:
+        # Cards box (scrollable content when downloads exist)
+        self.cards_box = CardsBox(scroller)
+
+        # Default image when no cards
+        icons_dir = Path(__file__).resolve().parent.parent / "ressources"
+        default_image_path = icons_dir / "default.png"
+        self.default_image = None
+        try:
+            if default_image_path.exists():
+                img = PILImage.open(default_image_path)
+                self.default_image = ctk.CTkImage(img, size=(80, 80))
+        except Exception:
+            pass
+
+        self.center_box = ctk.CTkFrame(scroller)
+        self.default_image_view = ctk.CTkLabel(self.center_box, image=self.default_image, text="")
+        self.default_image_view.pack(expand=True)
+        self.center_box.pack(fill="both", expand=True)
+
+    def _show_terminal(self) -> None:
         """Affiche la fenêtre de terminal avec la sortie en temps réel"""
-        if self._terminal_window is None or not self._terminal_window.visible:
-            self._terminal_text = toga.MultilineTextInput(
-                readonly=True,
-                style=Pack(flex=1, font_family="monospace")
-            )
+        if self._terminal_window is None or not self._terminal_window.winfo_exists():
+            self._terminal_window = ctk.CTkToplevel(self.widget)
+            self._terminal_window.title(_("Terminal - Real-time output"))
+            self._terminal_window.geometry("850x650")
+            
+            self._terminal_text = ctk.CTkTextbox(self._terminal_window)
+            self._terminal_text.pack(fill="both", expand=True, padx=10, pady=10)
             
             # Afficher le contenu actuel du buffer
             with self._log_lock:
                 current_content = self._log_buffer.getvalue()
                 if current_content:
-                    self._terminal_text.value = current_content
+                    self._terminal_text.insert("1.0", current_content)
             
             # Boutons de contrôle
-            clear_btn = toga.Button(_("Clear"), on_press=self._clear_terminal, style=Pack(margin=6))
-            refresh_btn = toga.Button(_("Refresh"), on_press=self._refresh_terminal, style=Pack(margin=6))
-            close_btn = toga.Button(_("Close"), on_press=self._close_terminal, style=Pack(margin=6))
+            button_frame = ctk.CTkFrame(self._terminal_window)
+            button_frame.pack(fill="x", padx=10, pady=10)
             
-            button_box = toga.Box(style=Pack(direction="row"))
-            button_box.add(clear_btn)
-            button_box.add(refresh_btn)
-            button_box.add(toga.Box(style=Pack(flex=1)))  # Espaceur
-            button_box.add(close_btn)
+            clear_btn = ctk.CTkButton(button_frame, text=_("Clear"), command=self._clear_terminal, width=100)
+            clear_btn.pack(side="left", padx=5)
             
-            # Conteneur principal
-            main_box = toga.Box(style=Pack(direction="column", margin=15))
-            main_box.add(self._terminal_text)
-            main_box.add(button_box)
+            refresh_btn = ctk.CTkButton(button_frame, text=_("Refresh"), command=self._refresh_terminal, width=100)
+            refresh_btn.pack(side="left", padx=5)
             
-            # Créer la fenêtre
-            self._terminal_window = TerminalWindow(
-                title=_("Terminal - Real-time output"),
-                content=main_box,
-                size=(850, 650)
-            )
-            
-            # Centrer et afficher
-            self._terminal_window.show()
-            
-            # NE PAS démarrer la mise à jour automatique pour éviter le blocage
-            # L'utilisateur peut cliquer sur "Rafraîchir" pour voir les nouveaux logs
+            close_btn = ctk.CTkButton(button_frame, text=_("Close"), command=self._close_terminal, width=100)
+            close_btn.pack(side="right", padx=5)
     
-    def _refresh_terminal(self, widget: toga.Button) -> None:
+    def _refresh_terminal(self) -> None:
         """Rafraîchit manuellement le contenu du terminal"""
         if self._terminal_text:
             with self._log_lock:
                 current_content = self._log_buffer.getvalue()
-                self._terminal_text.value = current_content
+                self._terminal_text.delete("1.0", "end")
+                self._terminal_text.insert("1.0", current_content)
     
-    def _clear_terminal(self, widget: toga.Button) -> None:
+    def _clear_terminal(self) -> None:
         """Efface le contenu du terminal"""
         with self._log_lock:
             self._log_buffer.seek(0)
             self._log_buffer.truncate(0)
         
         if self._terminal_text:
-            self._terminal_text.value = ""
+            self._terminal_text.delete("1.0", "end")
     
-    def _close_terminal(self, widget: toga.Button) -> None:
+    def _close_terminal(self) -> None:
         """Ferme la fenêtre de terminal"""
         if self._terminal_window:
-            self._terminal_window.close()
+            self._terminal_window.destroy()
             self._terminal_window = None
             self._terminal_text = None
-    
-    def _start_terminal_update(self) -> None:
-        """Démarre la mise à jour automatique du terminal (non-bloquante)"""
-        def update_loop():
-            while self._terminal_window and self._terminal_window.visible:
-                try:
-                    if self._terminal_text:
-                        with self._log_lock:
-                            current_content = self._log_buffer.getvalue()
-                            if current_content != self._terminal_text.value:
-                                # Mettre à jour le texte de manière thread-safe
-                                try:
-                                    self._terminal_text.value = current_content
-                                except Exception:
-                                    # Si la fenêtre est fermée pendant la mise à jour
-                                    break
-                except Exception:
-                    # Si une erreur occurs, arrêter la boucle
-                    break
-                
-                # Utiliser un temps plus court pour être plus réactif mais moins bloquant
-                time.sleep(0.2)
-        
-        thread = threading.Thread(target=update_loop, daemon=True)
-        thread.start()
     
     def _update_content_display(self) -> None:
         """Met à jour l'affichage en fonction du nombre de cartes"""
         # Vérifier si des cartes sont présentes
-        has_cards = hasattr(self.cards_box, 'children') and len(self.cards_box.children) > 0
-        
-        # Vider le conteneur principal
-        self.main_content_box.clear()
-        
+        has_cards = len(self.cards_box.winfo_children()) > 0
+
+        self.center_box.pack_forget()
+        self.cards_box.pack_forget()
+
         if has_cards:
             # Afficher les cartes
-            self.main_content_box.add(self.cards_box)
+            self.cards_box.pack(fill="both", expand=True)
         else:
             # Afficher l'image par défaut centrée
-            self.main_content_box.add(self.center_box)
+            self.center_box.pack(fill="both", expand=True)
     
     def log_message(self, message: str) -> None:
         """Ajoute un message au buffer de log"""
@@ -200,6 +209,10 @@ class DownloadsView:
         """Ajoute un message de debug au buffer de log"""
         self.log_message(f"DEBUG: {message}")
     
+    def log_warning(self, message: str) -> None:
+        """Ajoute un message d'avertissement au buffer de log"""
+        self.log_message(f"WARNING: {message}")
+
     def log_error(self, message: str) -> None:
         """Ajoute un message d'erreur au buffer de log"""
         self.log_message(f"ERROR: {message}")

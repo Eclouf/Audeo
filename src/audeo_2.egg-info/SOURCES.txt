@@ -8,6 +8,7 @@ src/audeo2/download_manager.py
 src/audeo2/download_models.py
 src/audeo2/ffmpeg.py
 src/audeo2/i18n.py
+src/audeo2/logging_config.py
 src/audeo2/options_formatter.py
 src/audeo2/settings.py
 src/audeo2/update.py
@@ -23,3 +24,5 @@ src/audeo_2.egg-info/dependency_links.txt
 src/audeo_2.egg-info/entry_points.txt
 src/audeo_2.egg-info/requires.txt
 src/audeo_2.egg-info/top_level.txt
+tests/test_download_manager.py
+tests/test_options_formatter.py

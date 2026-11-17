@@ -3,18 +3,17 @@ from __future__ import annotations
 import os
 import json
 import subprocess
-import asyncio
 from pathlib import Path
 
-import toga
-from toga import style
-from toga.style import Pack
+import customtkinter as ctk
+from PIL import Image as PILImage
 
 from ..i18n import _, i18n
+from ..widgets import load_themed_icon
 
 
 class SettingsView:
-    def __init__(self, app: toga.App) -> None:
+    def __init__(self, app) -> None:
         self.app = app
 
         self._metadata_example_rules = (
@@ -31,35 +30,43 @@ description:(Vol\\.\\s+(?P<volume>[^\\n]+))
         # Charger l'icône en premier (avant _build_general)
         
         icon_path = Path(__file__).resolve().parent.parent / "ressources" / "pictures"
-        self._folder_dest_icon = toga.Image(str(icon_path / "settings" / "folder-2-32.png"))
-        self._file_name_icon = toga.Image(str(icon_path / "settings" / "write-3-32.png"))
-        self._file_rewrite_icon = toga.Image(str(icon_path / "settings" / "file-32.png"))
-        self._speed_icon = toga.Image(str(icon_path / "settings" / "speed-32.png"))
-        self._fragments_icon = toga.Image(str(icon_path / "settings" / "fragements-48.png"))
-        self._thumbnail_icon = toga.Image(str(icon_path / "settings" / "thumbnail-32.png"))
-        self._playlist_icon = toga.Image(str(icon_path / "settings" / "playlist-32.png"))
-        self._folder_playlist_icon = toga.Image(str(icon_path / "settings" / "folder-32.png"))
-        self._proxy_icon = toga.Image(str(icon_path / "settings" / "proxy-48.png"))
         
-        self._metadata_icon = toga.Image(str(icon_path / "settings" / "metadata-32.png"))
-        self._metadata_search_icon = toga.Image(str(icon_path / "settings" / "script-32.png"))
+        def load_icon(name, size=(24, 24)):
+            try:
+                img_path = icon_path / "settings" / name
+                if img_path.exists():
+                    return load_themed_icon(img_path, size=size)
+            except Exception:
+                pass
+            return None
         
-        self._codec_audio_icon = toga.Image(str(icon_path / "settings" / "codec-audio-32.png"))
-        self._ext_audio_icon = toga.Image(str(icon_path / "settings" / "container-audio-32.png"))
-        self._square_audio_icon = toga.Image(str(icon_path / "settings" / "square-48.png"))
-        self._codec_video_icon = toga.Image(str(icon_path / "settings" / "codec-video-32.png"))
-        self._ext_video_icon = toga.Image(str(icon_path / "settings" / "container-video-32.png"))
-        self._subs_icon = toga.Image(str(icon_path / "settings" / "subtitles-32.png"))
-        self._chapters_icon = toga.Image(str(icon_path / "settings" / "chapters-32.png"))
+        self._folder_dest_icon = load_icon("folder-2-32.png")
+        self._file_name_icon = load_icon("write-3-32.png")
+        self._file_rewrite_icon = load_icon("file-32.png")
+        self._file_format_icon = load_icon("write-2-32.png")
+        self._ignore_errors_icon = load_icon("ignore-error-32.png")
+        self._speed_icon = load_icon("speed-32.png")
+        self._fragments_icon = load_icon("fragements-48.png")
+        self._thumbnail_icon = load_icon("thumbnail-32.png")
+        self._playlist_icon = load_icon("playlist-32.png")
+        self._folder_playlist_icon = load_icon("folder-32.png")
+        self._proxy_icon = load_icon("proxy-48.png")
         
+        self._metadata_icon = load_icon("metadata-32.png")
+        self._metadata_search_icon = load_icon("script-32.png")
+        
+        self._codec_audio_icon = load_icon("codec-audio-32.png")
+        self._ext_audio_icon = load_icon("container-audio-32.png")
+        self._square_audio_icon = load_icon("square-48.png")
+        self._codec_video_icon = load_icon("codec-video-32.png")
+        self._ext_video_icon = load_icon("container-video-32.png")
+        self._subs_icon = load_icon("subtitles-32.png")
+        self._chapters_icon = load_icon("chapters-32.png")
 
-
-        general = self._wrap_scroll(self._build_general())
-        metadata = self._wrap_scroll(self._build_metadata())
-        audio = self._wrap_scroll(self._build_audio())
-        video = self._wrap_scroll(self._build_video())
-
-        # Bouton d'application global
+        # Create main widget
+        self.widget = ctk.CTkFrame(app.content)
+        
+        # Language selection
         _lang_pairs = [
             ("French", "fr"),
             ("English", "en"),
@@ -75,47 +82,62 @@ description:(Vol\\.\\s+(?P<volume>[^\\n]+))
         current_lang_code = self.app.settings.general.lang_code
         current_lang_label = next((_(label) for label, code in _lang_pairs if code == current_lang_code), _("French"))
 
-        lang_select = toga.Selection(
-            items=list(lang_display_to_code.keys()),
-            value=current_lang_label,
-            on_change=self._lang_change,
-            style=Pack(width=150, margin=10)
-        )
         self._lang_display_to_code = lang_display_to_code
-        apply_all_btn = toga.Button(_("Apply all"), on_press=self._apply_all, style=Pack(width=100, margin=10))
-        import_btn = toga.Button(_("Import"), on_press=self._import, style=Pack(width=100, margin=10))
-        export_btn = toga.Button(_("Export"), on_press=self._export, style=Pack(width=100, margin=10))
         
-        # Conteneur principal avec onglets et bouton
-        main_box = toga.Box(style=Pack(direction="column", flex=1, margin_bottom=15))
-        main_box.add(lang_select)
-        main_box.add(toga.OptionContainer(
-            style=Pack(flex=1),
-            content=[
-                toga.OptionItem(_("General"), general),
-                toga.OptionItem(_("Metadata"), metadata),
-                toga.OptionItem(_("Audio"), audio),
-                toga.OptionItem(_("Video"), video),
-            ],
-        ))
-        main_box.add(
-            toga.Box(
-                children=[
-                    import_btn,
-                    export_btn,
-                    toga.Box(children=[], style=Pack(flex=1)),
-                    apply_all_btn,
-                ], 
-                style=Pack(direction="row")
-            )
+        # Top bar with language and buttons
+        top_bar = ctk.CTkFrame(self.widget)
+        top_bar.pack(fill="x", padx=10, pady=10)
+        
+        lang_select = ctk.CTkOptionMenu(
+            top_bar,
+            values=list(lang_display_to_code.keys()),
+            command=self._lang_change,
+            width=150,
+            height=30,
         )
+        lang_select.set(current_lang_label)
+        lang_select.pack(side="left", padx=5)
+        
+        apply_all_btn = ctk.CTkButton(top_bar, text=_("Apply all"), command=self._apply_all, width=100, height=30)
+        apply_all_btn.pack(side="right", padx=5)
+        
+        import_btn = ctk.CTkButton(top_bar, text=_("Import"), command=self._import, width=100, height=30)
+        import_btn.pack(side="right", padx=5)
+        
+        export_btn = ctk.CTkButton(top_bar, text=_("Export"), command=self._export, width=100, height=30)
+        export_btn.pack(side="right", padx=5)
+        
+        # Tabview for settings
+        self.tabview = ctk.CTkTabview(self.widget)
+        self.tabview.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Add tabs
+        self.tabview.add(_("General"))
+        self.tabview.add(_("Metadata"))
+        self.tabview.add(_("Audio"))
+        self.tabview.add(_("Video"))
+        
+        # Build each tab content
+        general_tab = self.tabview.tab(_("General"))
+        general = self._build_general(general_tab)
+        general.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        metadata_tab = self.tabview.tab(_("Metadata"))
+        metadata = self._build_metadata(metadata_tab)
+        metadata.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        audio_tab = self.tabview.tab(_("Audio"))
+        audio = self._build_audio(audio_tab)
+        audio.pack(fill="both", expand=True, padx=5, pady=5)
+        
+        video_tab = self.tabview.tab(_("Video"))
+        video = self._build_video(video_tab)
+        video.pack(fill="both", expand=True, padx=5, pady=5)
 
-        self.widget = main_box
 
-
-    async def _lang_change(self, widget, **kwargs):
+    def _lang_change(self, choice):
         """Gère le changement de langue"""
-        lang_name = str(widget.value or "")
+        lang_name = str(choice or "")
         lang_code = getattr(self, "_lang_display_to_code", {}).get(lang_name)
         if not lang_code:
             return
@@ -131,172 +153,244 @@ description:(Vol\\.\\s+(?P<volume>[^\\n]+))
         self.app.notify_language_change()
         
         # Message de confirmation
-        success_dialog = toga.InfoDialog(
-            title=_("Language changed"),
-            message=_("Language changed to {} ({})").format(lang_name, lang_code)
+        self.app._show_info_dialog(
+            _("Language changed"),
+            _("Language changed to {} ({})").format(lang_name, lang_code)
         )
-        
-        await self.app.main_window.dialog(success_dialog)
     
     def on_language_changed(self) -> None:
         """Méthode appelée quand la langue change"""
         self._update_ui_language()
-    
-    
 
-    def _wrap_scroll(self, content: toga.Widget) -> toga.ScrollContainer:
-        return toga.ScrollContainer(content=content, style=Pack(flex=1))
+    @staticmethod
+    def _add_icon(parent, icon) -> None:
+        if icon is not None:
+            ctk.CTkLabel(parent, image=icon, text="").pack(side="left", padx=(5, 2))
 
-    def _row(self, label: str, widget: toga.Widget, icon=None) -> toga.Box:
-        # Traduire le label dynamiquement
-        translated_label = _(label)
-        
+    def _row(self, parent, label: str, create_widget, icon=None):
+        # create_widget(parent) doit retourner le widget à placer à droite de la ligne
+        row = ctk.CTkFrame(parent, height=40)
+        row.pack(fill="x", pady=5)
+
+        left = ctk.CTkFrame(row)
+        left.pack(side="left", padx=5)
+
         if icon:
-            left = toga.Box(
-                children=[
-                    toga.ImageView(icon, style=Pack(width=24, height=24, margin=(5, 5, 5, 5))),
-                    toga.Label(translated_label, style=Pack(margin=(5, 5, 5, 5))),
-                ],
-                style=Pack(direction="row", align_items="center", width=100)
-            )
+            icon_label = ctk.CTkLabel(left, image=icon, text="")
+            icon_label.pack(side="left", padx=5)
+
+        label_widget = ctk.CTkLabel(left, text=_(label), font=("CTkFont", 12))
+        label_widget.pack(side="left", padx=5)
+
+        widget = create_widget(row)
+        widget.pack(side="right", padx=5)
+
+        return row
+
+    def _column(self, parent, label: str, create_widget):
+        # create_widget(parent) doit retourner le widget à placer sous le label
+        column = ctk.CTkFrame(parent)
+        column.pack(fill="both", pady=5)
+
+        label_widget = ctk.CTkLabel(column, text=_(label), font=("CTkFont", 12))
+        label_widget.pack(pady=5)
+
+        widget = create_widget(column)
+        widget.pack(fill="both", expand=True, pady=5)
+
+        return column
+
+    @staticmethod
+    def _init_switch(parent, value: bool) -> ctk.CTkSwitch:
+        switch = ctk.CTkSwitch(parent, text="", onvalue=True, offvalue=False)
+        if value:
+            switch.select()
+        return switch
+
+    @staticmethod
+    def _set_switch(switch, value: bool) -> None:
+        if value:
+            switch.select()
         else:
-            left = toga.Label(translated_label, style=Pack(width=100, margin=(5, 5, 5, 5)))
+            switch.deselect()
 
-        widget.style=Pack(direction="row", margin=(5, 5, 5, 5), flex=1)
-        frame = toga.Box(
-            children=[
-                toga.Box(  # Row interne pour label+widget
-                    children=[left, toga.Box(style=Pack(flex=1)), widget],
-                    style=Pack(direction="row", margin=1.5, background_color="#f0f0f0", flex=1)
-                )
-            ],
-            style=Pack(
-                margin=2,         # Espace interne
-                background_color="#d3d3d3",  # Fond cadre
-                # border_radius=6        # Si supporté
-                #flex=1
-            )
-        )
-        return frame
-    
-    def _column(self, label: str, widget: toga.Widget) -> toga.Box:
-        # Traduire le label dynamiquement
-        translated_label = _(label)
-        
-        left = toga.Label(translated_label, style=Pack(flex=1, margin=(5, 5, 5, 5)))
-        widget.style=Pack(margin=(5, 5, 5, 5), flex=1)
-        frame = toga.Box(
-            children=[
-                toga.Box(  # Row interne pour label+widget
-                    children=[left, widget],
-                    style=Pack(direction="column", margin=1.5, background_color="#f0f0f0", flex=1)
-                )
-            ],
-            style=Pack(
-                margin=1.5,         # Espace interne
-                background_color="#d3d3d3",  # Fond cadre
-                # border_radius=6        # Si supporté
-                #flex=1
-            )
-        )
-        return frame
-
-    def _build_general(self) -> toga.Widget:
+    def _build_general(self, parent):
         g = self.app.settings.general
 
-        self.dest_label = toga.Label(str(self.app.download_dir), style=Pack(flex=1, margin_top=3))
-        choose_dest_btn = toga.Button(_("Choose…"), on_press=self._choose_destination, style=Pack(margin_left=15, margin_top=5, margin_bottom=5, margin_right=10))
-        dest_row = toga.Box(style=Pack(direction="row", flex=1))
-        dest_row.add(self.dest_label)
-        dest_row.add(choose_dest_btn)
-
-        self.output_template_input = toga.TextInput(value=g.output_template, placeholder=_("%(title)s.%(ext)s"), style=Pack(flex=1, margin_top=5, margin_bottom=5))
-        self.output_format_input = toga.TextInput(value=g.output_format, style=Pack(flex=1, margin_top=5, margin_bottom=5))
+        container = ctk.CTkScrollableFrame(parent)
         
-        self.overwrite_switch = toga.Switch("", value=g.overwrite)
-
-        self.limit_rate_switch = toga.Switch("", value=g.limit_rate_enabled, style=Pack(margin_right=5))
-        self.limit_rate_input = toga.NumberInput(value=max(0, g.limit_rate_kib_s), style=Pack(flex=1))
-        limit_rate_row = toga.Box(style=Pack(direction="row", margin_top=5))
-        limit_rate_row.add(self.limit_rate_switch)
-        limit_rate_row.add(self.limit_rate_input)
-
-        self.fragments_input = toga.NumberInput(value=max(1, g.concurrent_fragments), style=Pack(width=150, margin=5))
-        self.add_thumbnail_switch = toga.Switch("", value=g.add_thumbnail)
-        self.download_playlist_switch = toga.Switch("", value=g.download_playlist)
-        self.playlist_folder_input = toga.TextInput(value=g.playlist_folder_name, placeholder=_("%(album,playlist_title)s/"), style=Pack(flex=1, margin_top=5, margin_bottom=5))
+        # Destination folder
+        dest_frame = ctk.CTkFrame(container, height=40)
+        dest_frame.pack(fill="x", pady=5)
         
-        box_proxy = toga.Box(style=Pack(direction="column", flex=1))
-        self.proxy_url_input = toga.TextInput(value=g.proxy_url, placeholder=_("http://proxy.example.com:8080"), style=Pack(margin_top=5, margin_bottom=5))
-        self.proxy_id_input = toga.TextInput(value=g.proxy_id, placeholder=_("username"), style=Pack(margin_top=5, margin_bottom=5))
-        self.proxy_pw_input = toga.PasswordInput(value=g.proxy_pw, placeholder=_("password"), style=Pack(margin_top=5, margin_bottom=5))
-        box_proxy.add(self.proxy_url_input)
-        box_proxy.add(self.proxy_id_input)
-        box_proxy.add(self.proxy_pw_input)
+        self._add_icon(dest_frame, self._folder_dest_icon)
+        self.dest_label = ctk.CTkLabel(dest_frame, text=str(self.app.download_dir), font=("CTkFont", 12))
+        self.dest_label.pack(side="left", padx=5)
+        
+        choose_dest_btn = ctk.CTkButton(dest_frame, text=_("Choose…"), command=self._choose_destination, width=100, height=30)
+        choose_dest_btn.pack(side="right", padx=5)
 
-        box = toga.Box(style=Pack(direction="column", flex=1, margin_top=15, margin_left=10, margin_right=10))
-        box.add(self._row("Destination folder", dest_row, icon=self._folder_dest_icon))
-        box.add(self._row("Output template", self.output_template_input, icon=self._file_name_icon))
-        box.add(self._row("Output format", self.output_format_input))
-        box.add(self._row("Overwrite existing files", self.overwrite_switch, icon=self._file_rewrite_icon))
-        box.add(self._row("Limit download rate", limit_rate_row, icon=self._speed_icon))
-        box.add(self._row("Simultaneous download fragments", self.fragments_input, icon=self._fragments_icon))
-        box.add(self._row("Add thumbnail", self.add_thumbnail_switch, icon=self._thumbnail_icon))
-        box.add(self._row("Download playlists", self.download_playlist_switch, icon=self._playlist_icon))
-        box.add(self._row("Playlist folder name", self.playlist_folder_input, icon=self._folder_playlist_icon))
-        box.add(self._row("Proxy URL", toga.Box(children=[box_proxy]), icon=self._proxy_icon))
-        return box
+        # Output template
+        template_frame = ctk.CTkFrame(container, height=40)
+        template_frame.pack(fill="x", pady=5)
+        self._add_icon(template_frame, self._file_name_icon)
+        ctk.CTkLabel(template_frame, text=_("Output template"), font=("CTkFont", 12)).pack(side="left", padx=5)
+        self.output_template_input = ctk.CTkEntry(template_frame, placeholder_text=_("%(title)s.%(ext)s"), width=300, height=30, font=("CTkFont", 12))
+        self.output_template_input.insert(0, g.output_template)
+        self.output_template_input.pack(side="right", padx=5)
 
-    async def _choose_destination(self, widget: toga.Button) -> None:
+        # Output format
+        format_frame = ctk.CTkFrame(container, height=40)
+        format_frame.pack(fill="x", pady=5)
+        self._add_icon(format_frame, self._file_format_icon)
+        ctk.CTkLabel(format_frame, text=_("Output format"), font=("CTkFont", 12)).pack(side="left", padx=5)
+        self.output_format_input = ctk.CTkEntry(format_frame, width=300, height=30, font=("CTkFont", 12))
+        self.output_format_input.insert(0, g.output_format)
+        self.output_format_input.pack(side="right", padx=5)
+        
+        # Overwrite switch
+        overwrite_frame = ctk.CTkFrame(container, height=40)
+        overwrite_frame.pack(fill="x", pady=5)
+        self._add_icon(overwrite_frame, self._file_rewrite_icon)
+        ctk.CTkLabel(overwrite_frame, text=_("Overwrite existing files"), font=("CTkFont", 12)).pack(side="left", padx=5)
+        self.overwrite_switch = self._init_switch(overwrite_frame, g.overwrite)
+        self.overwrite_switch.pack(side="right", padx=5)
+        
+        # Ignore errors switch
+        ignore_frame = ctk.CTkFrame(container, height=40)
+        ignore_frame.pack(fill="x", pady=5)
+        self._add_icon(ignore_frame, self._ignore_errors_icon)
+        ctk.CTkLabel(ignore_frame, text=_("Ignore errors"), font=("CTkFont", 12)).pack(side="left", padx=5)
+        self.ignore_errors_switch = self._init_switch(ignore_frame, g.ignore_errors)
+        self.ignore_errors_switch.pack(side="right", padx=5)
+
+        # Limit rate
+        rate_frame = ctk.CTkFrame(container, height=40)
+        rate_frame.pack(fill="x", pady=5)
+        self._add_icon(rate_frame, self._speed_icon)
+        ctk.CTkLabel(rate_frame, text=_("Limit download rate (KiB/s)"), font=("CTkFont", 12)).pack(side="left", padx=5)
+        self.limit_rate_switch = self._init_switch(rate_frame, g.limit_rate_enabled)
+        self.limit_rate_switch.pack(side="right", padx=5)
+        self.limit_rate_input = ctk.CTkEntry(rate_frame, width=150, height=30, font=("CTkFont", 12))
+        self.limit_rate_input.insert(0, str(max(0, g.limit_rate_kib_s)))
+        self.limit_rate_input.pack(side="right", padx=5)
+
+        # Concurrent fragments
+        fragments_frame = ctk.CTkFrame(container, height=40)
+        fragments_frame.pack(fill="x", pady=5)
+        self._add_icon(fragments_frame, self._fragments_icon)
+        ctk.CTkLabel(fragments_frame, text=_("Concurrent fragments"), font=("CTkFont", 12)).pack(side="left", padx=5)
+        self.fragments_input = ctk.CTkEntry(fragments_frame, width=150, height=30, font=("CTkFont", 12))
+        self.fragments_input.insert(0, str(max(1, g.concurrent_fragments)))
+        self.fragments_input.pack(side="right", padx=5)
+        
+        # Add thumbnail switch
+        thumbnail_frame = ctk.CTkFrame(container, height=40)
+        thumbnail_frame.pack(fill="x", pady=5)
+        self._add_icon(thumbnail_frame, self._thumbnail_icon)
+        ctk.CTkLabel(thumbnail_frame, text=_("Add thumbnail"), font=("CTkFont", 12)).pack(side="left", padx=5)
+        self.add_thumbnail_switch = self._init_switch(thumbnail_frame, g.add_thumbnail)
+        self.add_thumbnail_switch.pack(side="right", padx=5)
+        
+        # Download playlist switch
+        playlist_frame = ctk.CTkFrame(container, height=40)
+        playlist_frame.pack(fill="x", pady=5)
+        self._add_icon(playlist_frame, self._playlist_icon)
+        ctk.CTkLabel(playlist_frame, text=_("Download playlist"), font=("CTkFont", 12)).pack(side="left", padx=5)
+        self.download_playlist_switch = self._init_switch(playlist_frame, g.download_playlist)
+        self.download_playlist_switch.pack(side="right", padx=5)
+        
+        # Playlist folder
+        playlist_folder_frame = ctk.CTkFrame(container, height=40)
+        playlist_folder_frame.pack(fill="x", pady=5)
+        self._add_icon(playlist_folder_frame, self._folder_playlist_icon)
+        ctk.CTkLabel(playlist_folder_frame, text=_("Playlist folder name"), font=("CTkFont", 12)).pack(side="left", padx=5)
+        self.playlist_folder_input = ctk.CTkEntry(playlist_folder_frame, placeholder_text=_("%(album,playlist_title)s/"), width=300, height=30, font=("CTkFont", 12))
+        self.playlist_folder_input.insert(0, g.playlist_folder_name)
+        self.playlist_folder_input.pack(side="right", padx=5)
+        
+        # Proxy URL
+        proxy_frame = ctk.CTkFrame(container, height=40)
+        proxy_frame.pack(fill="x", pady=5)
+        self._add_icon(proxy_frame, self._proxy_icon)
+        ctk.CTkLabel(proxy_frame, text=_("Proxy URL"), font=("CTkFont", 12)).pack(side="left", padx=5)
+        self.proxy_url_input = ctk.CTkEntry(proxy_frame, placeholder_text=_("http://proxy.example.com:8080"), width=300, height=30, font=("CTkFont", 12))
+        self.proxy_url_input.insert(0, g.proxy_url)
+        self.proxy_url_input.pack(side="right", padx=5)
+        
+        # Proxy ID
+        proxy_id_frame = ctk.CTkFrame(container, height=40)
+        proxy_id_frame.pack(fill="x", pady=5)
+        self._add_icon(proxy_id_frame, self._proxy_icon)
+        ctk.CTkLabel(proxy_id_frame, text=_("Proxy username"), font=("CTkFont", 12)).pack(side="left", padx=5)
+        self.proxy_id_input = ctk.CTkEntry(proxy_id_frame, placeholder_text=_("username"), width=300, height=30, font=("CTkFont", 12))
+        self.proxy_id_input.insert(0, g.proxy_id)
+        self.proxy_id_input.pack(side="right", padx=5)
+        
+        # Proxy password
+        proxy_pw_frame = ctk.CTkFrame(container, height=40)
+        proxy_pw_frame.pack(fill="x", pady=5)
+        self._add_icon(proxy_pw_frame, self._proxy_icon)
+        ctk.CTkLabel(proxy_pw_frame, text=_("Proxy password"), font=("CTkFont", 12)).pack(side="left", padx=5)
+        self.proxy_pw_input = ctk.CTkEntry(proxy_pw_frame, placeholder_text=_("password"), show="*", width=300, height=30, font=("CTkFont", 12))
+        self.proxy_pw_input.insert(0, g.proxy_pw)
+        self.proxy_pw_input.pack(side="right", padx=5)
+
+        return container
+
+    def _choose_destination(self):
         try:
-            folder = await self.app.main_window.dialog(toga.SelectFolderDialog(_("Choose destination folder")))
+            from tkinter import filedialog
+            folder = filedialog.askdirectory(title=_("Choose destination folder"))
         except Exception:
             folder = None
         if folder:
             self.app.download_dir = Path(str(folder))
-            self.dest_label.text = str(self.app.download_dir)
+            self.dest_label.configure(text=str(self.app.download_dir))
             self.app.settings.general.download_dir = str(self.app.download_dir)
             self.app.save_settings()
 
-    def _apply_general(self, widget: toga.Button) -> None:
+    def _apply_general(self):
         g = self.app.settings.general
 
-        g.output_template = (self.output_template_input.value or "").strip() or g.output_template
-        g.output_format = (self.output_format_input.value or "").strip()
-        g.overwrite = bool(self.overwrite_switch.value)
+        g.output_template = (self.output_template_input.get() or "").strip() or g.output_template
+        g.output_format = (self.output_format_input.get() or "").strip()
+        g.overwrite = bool(self.overwrite_switch.get())
+        g.ignore_errors = bool(self.ignore_errors_switch.get())
 
-        g.limit_rate_enabled = bool(self.limit_rate_switch.value)
+        g.limit_rate_enabled = bool(self.limit_rate_switch.get())
         try:
-            g.limit_rate_kib_s = int(self.limit_rate_input.value or 0)
+            g.limit_rate_kib_s = int(self.limit_rate_input.get() or 0)
         except (TypeError, ValueError):
             g.limit_rate_kib_s = 0
         if g.limit_rate_kib_s < 0:
             g.limit_rate_kib_s = 0
 
         try:
-            g.concurrent_fragments = int(self.fragments_input.value or 1)
+            g.concurrent_fragments = int(self.fragments_input.get() or 1)
         except (TypeError, ValueError):
             g.concurrent_fragments = 1
         if g.concurrent_fragments < 1:
             g.concurrent_fragments = 1
         if g.concurrent_fragments > 16:
             g.concurrent_fragments = 16
-        self.fragments_input.value = g.concurrent_fragments
+        self.fragments_input.delete(0, 'end')
+        self.fragments_input.insert(0, str(g.concurrent_fragments))
 
-        g.add_thumbnail = bool(self.add_thumbnail_switch.value)
-        g.download_playlist = bool(self.download_playlist_switch.value)
-        g.playlist_folder_name = (self.playlist_folder_input.value or "").strip()
+        g.add_thumbnail = bool(self.add_thumbnail_switch.get())
+        g.download_playlist = bool(self.download_playlist_switch.get())
+        g.playlist_folder_name = (self.playlist_folder_input.get() or "").strip()
         
         # Validate proxy URL
-        proxy_url = (self.proxy_url_input.value or "").strip()
+        proxy_url = (self.proxy_url_input.get() or "").strip()
         if proxy_url and not self._is_valid_proxy_url(proxy_url):
             # Invalid proxy URL - reset to empty but don't block other settings
             proxy_url = ""
-            self.proxy_url_input.value = ""
+            self.proxy_url_input.delete(0, 'end')
         g.proxy_url = proxy_url
         
-        g.proxy_id = (self.proxy_id_input.value or "").strip()
-        g.proxy_pw = (self.proxy_pw_input.value or "").strip()
+        g.proxy_id = (self.proxy_id_input.get() or "").strip()
+        g.proxy_pw = (self.proxy_pw_input.get() or "").strip()
         self.app.save_settings()
 
     def _is_valid_proxy_url(self, url: str) -> bool:
@@ -319,59 +413,66 @@ description:(Vol\\.\\s+(?P<volume>[^\\n]+))
         except Exception:
             return False
 
-    def _build_metadata(self) -> toga.Widget:
+    def _build_metadata(self, parent) -> ctk.CTkScrollableFrame:
         g = self.app.settings.general
 
-        self.add_metadata_switch = toga.Switch("", value=getattr(g, "add_metadata", True))
-        self.custom_metadata_input = toga.MultilineTextInput(
-            value=getattr(g, "custom_metadata", ""),
-            style=Pack(flex=1, height=140),
+        container = ctk.CTkScrollableFrame(parent)
+
+        def make_metadata_switch(p):
+            self.add_metadata_switch = self._init_switch(p, getattr(g, "add_metadata", True))
+            return self.add_metadata_switch
+
+        def make_metadata_box(p):
+            self.custom_metadata_input = ctk.CTkTextbox(p, height=140, font=("CTkFont", 11))
+            self.custom_metadata_input.configure(fg_color=p.cget("fg_color"))
+            self.custom_metadata_input.insert("1.0", getattr(g, "custom_metadata", ""))
+            return self.custom_metadata_input
+
+        def make_parse_switch(p):
+            self.parse_metadata_switch = self._init_switch(p, getattr(g, "parse_metadata_enabled", False))
+            return self.parse_metadata_switch
+
+        def make_rules_box(p):
+            self.parse_metadata_rules_input = ctk.CTkTextbox(p, height=180, font=("CTkFont", 11))
+            self.parse_metadata_rules_input.configure(fg_color=p.cget("fg_color"))
+            self.parse_metadata_rules_input.insert(
+                "1.0",
+                getattr(g, "parse_metadata_rules", "") or self._metadata_example_rules,
+            )
+            return self.parse_metadata_rules_input
+
+        open_cfg_btn = ctk.CTkButton(
+            container,
+            text=_("Open settings folder"),
+            command=self._open_config_dir,
+            height=30,
         )
 
-        self.parse_metadata_switch = toga.Switch("", value=getattr(g, "parse_metadata_enabled", False))
-        self.parse_metadata_rules_input = toga.MultilineTextInput(
-            value=getattr(g, "parse_metadata_rules", "") or self._metadata_example_rules,
-            style=Pack(flex=1, height=180),
-        )
+        self._row(container, _("Add metadata"), make_metadata_switch, icon=self._metadata_icon)
+        self._column(container, _("Custom metadata (key=value)"), make_metadata_box)
+        self._row(container, _("Detect metadata (parse-metadata)"), make_parse_switch, icon=self._metadata_search_icon)
+        self._column(container, _("Parse-metadata rules (1 per line)"), make_rules_box)
+        open_cfg_btn.pack(fill="x", pady=10)
+        return container
 
-        open_cfg_btn = toga.Button(
-            _("Open settings folder"),
-            on_press=self._open_config_dir,
-            style=Pack(margin_top=10),
-        )
-
-        box = toga.Box(style=Pack(direction="column", flex=1, margin_top=15, margin_left=10, margin_right=10))
-        box.add(self._row(_("Add metadata"), self.add_metadata_switch, icon=self._metadata_icon))
-        box.add(self._column(_("Custom metadata (key=value)"), self.custom_metadata_input))
-        box.add(self._row(_("Detect metadata (parse-metadata)"), self.parse_metadata_switch, icon=self._metadata_search_icon))
-        box.add(self._column(_("Parse-metadata rules (1 per line)"), self.parse_metadata_rules_input))
-        box.add(open_cfg_btn)
-        return box
-
-    def _open_config_dir(self, widget: toga.Button) -> None:
+    def _open_config_dir(self) -> None:
         try:
             cfg_dir_raw = getattr(self.app, "config_dir", None)
             if cfg_dir_raw:
                 cfg_dir = Path(str(cfg_dir_raw))
             else:
-                cfg_dir = Path(str(self.app.paths.config))
+                cfg_dir = Path.home() / ".config" / "Audeo-2"
         except Exception as e:
-            try:
-                self.app.main_window.dialog(toga.ErrorDialog("Paramètres", f"Chemin de config invalide: {e}"))
-            except Exception:
-                pass
+            self.app._show_info_dialog("Paramètres", f"Chemin de config invalide: {e}")
             return
 
         try:
             cfg_dir.mkdir(parents=True, exist_ok=True)
         except Exception as e:
-            try:
-                self.app.main_window.dialog(toga.ErrorDialog(
-                    "Paramètres",
-                    f"Impossible de créer le dossier de config :\n{cfg_dir}\n\n{e}",
-                ))
-            except Exception:
-                pass
+            self.app._show_info_dialog(
+                "Paramètres",
+                f"Impossible de créer le dossier de config :\n{cfg_dir}\n\n{e}",
+            )
             return
 
         try:
@@ -380,13 +481,10 @@ description:(Vol\\.\\s+(?P<volume>[^\\n]+))
             cfg_dir = Path(str(cfg_dir))
 
         if not cfg_dir.exists() or not cfg_dir.is_dir():
-            try:
-                self.app.main_window.dialog(toga.ErrorDialog(
-                    "Paramètres",
-                    f"Le dossier de config n'existe pas (ou n'est pas un dossier) :\n{cfg_dir}",
-                ))
-            except Exception:
-                pass
+            self.app._show_info_dialog(
+                "Paramètres",
+                f"Le dossier de config n'existe pas (ou n'est pas un dossier) :\n{cfg_dir}",
+            )
             return
 
         try:
@@ -399,224 +497,261 @@ description:(Vol\\.\\s+(?P<volume>[^\\n]+))
             subprocess.Popen(["explorer", str(cfg_dir)])
             return
         except Exception as e:
-            try:
-                self.app.main_window.dialog(toga.ErrorDialog(
-                    "Paramètres",
-                    f"Impossible d'ouvrir le dossier :\n{cfg_dir}\n\n{e}",
-                ))
-            except Exception:
-                pass
+            self.app._show_info_dialog(
+                "Paramètres",
+                f"Impossible d'ouvrir le dossier :\n{cfg_dir}\n\n{e}",
+            )
             return
 
-    def _apply_metadata(self, widget: toga.Button) -> None:
+    def _apply_metadata(self) -> None:
         g = self.app.settings.general
 
-        g.add_metadata = bool(self.add_metadata_switch.value)
-        g.custom_metadata = str(self.custom_metadata_input.value or "").strip()
+        g.add_metadata = bool(self.add_metadata_switch.get())
+        g.custom_metadata = str(self.custom_metadata_input.get("1.0", "end") or "").strip()
 
-        g.parse_metadata_enabled = bool(self.parse_metadata_switch.value)
-        g.parse_metadata_rules = str(self.parse_metadata_rules_input.value or "").strip()
+        g.parse_metadata_enabled = bool(self.parse_metadata_switch.get())
+        g.parse_metadata_rules = str(self.parse_metadata_rules_input.get("1.0", "end") or "").strip()
 
         self.app.save_settings()
 
-    def _build_audio(self) -> toga.Widget:
+    def _build_audio(self, parent) -> ctk.CTkScrollableFrame:
         a = self.app.settings.audio
 
-        self.audio_codec_select = toga.Selection(items=["auto", "mp3", "aac", "opus", "vorbis", "flac", "alac"], style=Pack(width=250))
-        self.audio_codec_select.value = a.preferred_codec
+        container = ctk.CTkScrollableFrame(parent)
 
-        self.audio_ext_select = toga.Selection(items=["mp3", "aac", "opus", "m4a", "wav", "flac", "alac"], style=Pack(width=250))
-        self.audio_ext_select.value = a.ext
+        def make_codec(p):
+            self.audio_codec_select = ctk.CTkOptionMenu(
+                p,
+                values=["auto", "mp3", "aac", "opus", "vorbis", "flac", "alac"],
+                width=250, height=30, font=("CTkFont", 12),
+            )
+            self.audio_codec_select.set(a.preferred_codec)
+            return self.audio_codec_select
 
-        self.audio_square_thumb_switch = toga.Switch("", value=a.square_thumbnail)
+        def make_ext(p):
+            self.audio_ext_select = ctk.CTkOptionMenu(
+                p,
+                values=["mp3", "aac", "opus", "m4a", "wav", "flac", "alac"],
+                width=250, height=30, font=("CTkFont", 12),
+            )
+            self.audio_ext_select.set(a.ext)
+            return self.audio_ext_select
 
-        box = toga.Box(style=Pack(direction="column", flex=1, margin_top=15, margin_left=10, margin_right=10))
-        box.add(self._row("Preferred codec", self.audio_codec_select, icon=self._codec_audio_icon))
-        box.add(self._row("Extension / container", self.audio_ext_select, icon=self._ext_audio_icon))
-        box.add(self._row("Square thumbnail", self.audio_square_thumb_switch, icon=self._square_audio_icon))
-        return box
+        def make_square_thumb(p):
+            self.audio_square_thumb_switch = self._init_switch(p, a.square_thumbnail)
+            return self.audio_square_thumb_switch
 
-    def _apply_audio(self, widget: toga.Button) -> None:
+        self._row(container, "Preferred codec", make_codec, icon=self._codec_audio_icon)
+        self._row(container, "Extension / container", make_ext, icon=self._ext_audio_icon)
+        self._row(container, "Square thumbnail", make_square_thumb, icon=self._square_audio_icon)
+        return container
+
+    def _apply_audio(self) -> None:
         a = self.app.settings.audio
-        a.preferred_codec = str(self.audio_codec_select.value or "auto")
-        a.ext = str(self.audio_ext_select.value or "mp3")
-        a.square_thumbnail = bool(self.audio_square_thumb_switch.value)
+        a.preferred_codec = str(self.audio_codec_select.get() or "auto")
+        a.ext = str(self.audio_ext_select.get() or "mp3")
+        a.square_thumbnail = bool(self.audio_square_thumb_switch.get())
         self.app.save_settings()
 
-    def _build_video(self) -> toga.Widget:
+    def _build_video(self, parent) -> ctk.CTkScrollableFrame:
         v = self.app.settings.video
 
-        self.video_codec_select = toga.Selection(items=["auto", "h264", "vp9", "av1"], style=Pack(width=250))
-        self.video_codec_select.value = v.preferred_codec
+        container = ctk.CTkScrollableFrame(parent)
 
-        self.video_ext_select = toga.Selection(items=["auto", "mp4", "mkv", "webm"], style=Pack(width=250))
-        self.video_ext_select.value = v.ext
+        def make_codec(p):
+            self.video_codec_select = ctk.CTkOptionMenu(
+                p,
+                values=["auto", "h264", "vp9", "av1"],
+                width=250, height=30, font=("CTkFont", 12),
+            )
+            self.video_codec_select.set(v.preferred_codec)
+            return self.video_codec_select
 
-        self.video_subs_switch = toga.Switch("", value=v.subtitles)
-        self.video_chapters_switch = toga.Switch("", value=v.chapters)
+        def make_ext(p):
+            self.video_ext_select = ctk.CTkOptionMenu(
+                p,
+                values=["auto", "mp4", "mkv", "webm"],
+                width=250, height=30, font=("CTkFont", 12),
+            )
+            self.video_ext_select.set(v.ext)
+            return self.video_ext_select
 
-        box = toga.Box(style=Pack(direction="column", flex=1, margin_top=15, margin_left=10, margin_right=10))
-        box.add(self._row("Preferred codec", self.video_codec_select, icon=self._codec_video_icon))
-        box.add(self._row("Extension / container", self.video_ext_select, icon=self._ext_video_icon))
-        box.add(self._row("Subtitles", self.video_subs_switch, icon=self._subs_icon))
-        box.add(self._row("Chapters", self.video_chapters_switch, icon=self._chapters_icon))
-        return box
+        def make_subs(p):
+            self.video_subs_switch = self._init_switch(p, v.subtitles)
+            return self.video_subs_switch
 
-    def _apply_video(self, widget: toga.Button) -> None:
+        def make_chapters(p):
+            self.video_chapters_switch = self._init_switch(p, v.chapters)
+            return self.video_chapters_switch
+
+        self._row(container, "Preferred codec", make_codec, icon=self._codec_video_icon)
+        self._row(container, "Extension / container", make_ext, icon=self._ext_video_icon)
+        self._row(container, "Subtitles", make_subs, icon=self._subs_icon)
+        self._row(container, "Chapters", make_chapters, icon=self._chapters_icon)
+        return container
+
+    def _apply_video(self) -> None:
         v = self.app.settings.video
-        v.preferred_codec = str(self.video_codec_select.value or "auto")
-        v.ext = str(self.video_ext_select.value or "auto")
-        v.subtitles = bool(self.video_subs_switch.value)
-        v.chapters = bool(self.video_chapters_switch.value)
+        v.preferred_codec = str(self.video_codec_select.get() or "auto")
+        v.ext = str(self.video_ext_select.get() or "auto")
+        v.subtitles = bool(self.video_subs_switch.get())
+        v.chapters = bool(self.video_chapters_switch.get())
         self.app.save_settings()
 
-    def _apply_all(self, widget: toga.Button) -> None:
+    def _apply_all(self) -> None:
         """Applique tous les paramètres de tous les onglets"""
-        self._apply_general(None)
-        self._apply_metadata(None)
-        self._apply_audio(None)
-        self._apply_video(None)
+        self._apply_general()
+        self._apply_metadata()
+        self._apply_audio()
+        self._apply_video()
         
-    async def _import(self, widget: toga.Button) -> None:
+    def _import(self) -> None:
         """Importe les paramètres depuis un fichier JSON"""
         try:
-            # Créer le dialogue d'ouverture de fichier
-            open_dialog = toga.OpenFileDialog(
-                title="Importer les paramètres",
-                file_types=["json"]
+            from tkinter import filedialog
+            file_path = filedialog.askopenfilename(
+                title=_("Import settings"),
+                filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
             )
-            
-            # Afficher le dialogue et obtenir le chemin
-            file_path = await self.app.main_window.dialog(open_dialog)
-            
+
             if not file_path:
                 return  # L'utilisateur a annulé
-            
-            # Lire et parser le fichier JSON
+
             with open(file_path, 'r', encoding='utf-8') as f:
                 settings_data = json.load(f)
-            
-            # Importer les paramètres généraux
+
             if "general" in settings_data:
                 general = settings_data["general"]
                 for key, value in general.items():
                     if hasattr(self.app.settings.general, key):
                         setattr(self.app.settings.general, key, value)
-            
-            # Importer les paramètres vidéo
+
             if "video" in settings_data:
                 video = settings_data["video"]
                 for key, value in video.items():
                     if hasattr(self.app.settings.video, key):
                         setattr(self.app.settings.video, key, value)
-            
-            # Importer les paramètres audio
+
             if "audio" in settings_data:
                 audio = settings_data["audio"]
                 for key, value in audio.items():
                     if hasattr(self.app.settings.audio, key):
                         setattr(self.app.settings.audio, key, value)
-            
-            # Sauvegarder les nouveaux paramètres
+
             self.app.save_settings()
-            
-            # Mettre à jour l'interface avec les nouveaux paramètres
             self._refresh_ui_from_settings()
-            
-            # Message de succès avec la nouvelle syntaxe
-            success_dialog = toga.InfoDialog(
-                title=_("Import settings"),
-                message=_("Settings imported successfully\n\nAll settings have been applied.")
+
+            self.app._show_info_dialog(
+                _("Import settings"),
+                _("Settings imported successfully\n\nAll settings have been applied."),
             )
-            await self.app.main_window.dialog(success_dialog)
-            
+
         except json.JSONDecodeError:
-            error_dialog = toga.ErrorDialog(
-                title=_("Format error"),
-                message=_("The selected file is not a valid JSON file.")
+            self.app._show_info_dialog(
+                _("Format error"),
+                _("The selected file is not a valid JSON file."),
             )
-            await self.app.main_window.dialog(error_dialog)
         except Exception as e:
-            error_dialog = toga.ErrorDialog(
-                title=_("Unable to import settings"),
-                message=_("Unable to import settings:\n{}").format(str(e))
+            self.app._show_info_dialog(
+                _("Unable to import settings"),
+                _("Unable to import settings:\n{}").format(str(e)),
             )
-            await self.app.main_window.dialog(error_dialog)
-    
+
+    @staticmethod
+    def _set_entry(entry, value) -> None:
+        try:
+            entry.delete(0, "end")
+            entry.insert(0, str(value))
+        except Exception:
+            pass
+
+    @staticmethod
+    def _set_textbox(box, value) -> None:
+        try:
+            box.delete("1.0", "end")
+            box.insert("1.0", str(value or ""))
+        except Exception:
+            pass
+
     def _refresh_ui_from_settings(self) -> None:
         """Rafraîchit l'interface avec les paramètres actuels"""
         try:
-            # Mettre à jour les champs généraux
+            g = self.app.settings.general
+
             if hasattr(self, 'dest_label'):
-                self.dest_label.text = self.app.settings.general.download_dir or ""
+                self.dest_label.configure(text=str(getattr(self.app, "download_dir", "") or ""))
             if hasattr(self, 'output_template_input'):
-                self.output_template_input.value = self.app.settings.general.output_template
+                self._set_entry(self.output_template_input, g.output_template)
             if hasattr(self, 'output_format_input'):
-                self.output_format_input.value = self.app.settings.general.output_format
-            if hasattr(self, 'overwrite_switch'):
-                self.overwrite_switch.value = self.app.settings.general.overwrite
-            if hasattr(self, 'limit_rate_switch'):
-                self.limit_rate_switch.value = self.app.settings.general.limit_rate_enabled
+                self._set_entry(self.output_format_input, g.output_format)
+
+            for name, value in (
+                ("overwrite_switch", g.overwrite),
+                ("ignore_errors_switch", g.ignore_errors),
+                ("limit_rate_switch", g.limit_rate_enabled),
+                ("add_thumbnail_switch", g.add_thumbnail),
+                ("download_playlist_switch", g.download_playlist),
+                ("add_metadata_switch", g.add_metadata),
+                ("parse_metadata_switch", g.parse_metadata_enabled),
+            ):
+                switch = getattr(self, name, None)
+                if switch is not None:
+                    self._set_switch(switch, bool(value))
+
             if hasattr(self, 'limit_rate_input'):
-                self.limit_rate_input.value = self.app.settings.general.limit_rate_kib_s
+                self._set_entry(self.limit_rate_input, g.limit_rate_kib_s)
             if hasattr(self, 'fragments_input'):
-                self.fragments_input.value = self.app.settings.general.concurrent_fragments
-            if hasattr(self, 'add_thumbnail_switch'):
-                self.add_thumbnail_switch.value = self.app.settings.general.add_thumbnail
-            if hasattr(self, 'download_playlist_switch'):
-                self.download_playlist_switch.value = self.app.settings.general.download_playlist
+                self._set_entry(self.fragments_input, g.concurrent_fragments)
             if hasattr(self, 'playlist_folder_input'):
-                self.playlist_folder_input.value = self.app.settings.general.playlist_folder_name
-            
-            # Mettre à jour les champs vidéo
-            if hasattr(self, 'video_codec_select'):
-                self.video_codec_select.value = self.app.settings.video.preferred_codec
-            if hasattr(self, 'video_ext_select'):
-                self.video_ext_select.value = self.app.settings.video.ext
-            if hasattr(self, 'video_subs_switch'):
-                self.video_subs_switch.value = self.app.settings.video.subtitles
-            if hasattr(self, 'video_chapters_switch'):
-                self.video_chapters_switch.value = self.app.settings.video.chapters
-            
-            # Mettre à jour les champs métadonnées
-            if hasattr(self, 'add_metadata_switch'):
-                self.add_metadata_switch.value = self.app.settings.general.add_metadata
+                self._set_entry(self.playlist_folder_input, g.playlist_folder_name)
+            if hasattr(self, 'proxy_url_input'):
+                self._set_entry(self.proxy_url_input, g.proxy_url)
+            if hasattr(self, 'proxy_id_input'):
+                self._set_entry(self.proxy_id_input, g.proxy_id)
+            if hasattr(self, 'proxy_pw_input'):
+                self._set_entry(self.proxy_pw_input, g.proxy_pw)
+
             if hasattr(self, 'custom_metadata_input'):
-                self.custom_metadata_input.value = self.app.settings.general.custom_metadata
-            if hasattr(self, 'parse_metadata_switch'):
-                self.parse_metadata_switch.value = self.app.settings.general.parse_metadata_enabled
+                self._set_textbox(self.custom_metadata_input, g.custom_metadata)
             if hasattr(self, 'parse_metadata_rules_input'):
-                self.parse_metadata_rules_input.value = self.app.settings.general.parse_metadata_rules
-            
-            # Mettre à jour les champs audio
+                self._set_textbox(self.parse_metadata_rules_input, g.parse_metadata_rules)
+
+            if hasattr(self, 'video_codec_select'):
+                self.video_codec_select.set(self.app.settings.video.preferred_codec)
+            if hasattr(self, 'video_ext_select'):
+                self.video_ext_select.set(self.app.settings.video.ext)
+            for name, value in (
+                ("video_subs_switch", self.app.settings.video.subtitles),
+                ("video_chapters_switch", self.app.settings.video.chapters),
+            ):
+                switch = getattr(self, name, None)
+                if switch is not None:
+                    self._set_switch(switch, bool(value))
+
             if hasattr(self, 'audio_codec_select'):
-                self.audio_codec_select.value = self.app.settings.audio.preferred_codec
+                self.audio_codec_select.set(self.app.settings.audio.preferred_codec)
             if hasattr(self, 'audio_ext_select'):
-                self.audio_ext_select.value = self.app.settings.audio.ext
+                self.audio_ext_select.set(self.app.settings.audio.ext)
             if hasattr(self, 'audio_square_thumb_switch'):
-                self.audio_square_thumb_switch.value = self.app.settings.audio.square_thumbnail
-                
-        except Exception as e:
-            # En cas d'erreur, ne pas bloquer l'import
+                self._set_switch(self.audio_square_thumb_switch, bool(self.app.settings.audio.square_thumbnail))
+
+        except Exception:
             pass
-    
-    async def _export(self, widget: toga.Button) -> None:
+
+    def _export(self) -> None:
         """Exporte les paramètres actuels dans un fichier JSON"""
         try:
-            # Créer le dialogue de sauvegarde
-            save_dialog = toga.SaveFileDialog(
-                title="Exporter les paramètres",
-                suggested_filename="audeo_settings.json",
-                file_types=["json"]
+            from tkinter import filedialog
+            file_path = filedialog.asksaveasfilename(
+                title=_("Export settings"),
+                defaultextension=".json",
+                initialfile="audeo_settings.json",
+                filetypes=[("JSON files", "*.json")],
             )
-            
-            # Afficher le dialogue et obtenir le chemin
-            file_path = await self.app.main_window.dialog(save_dialog)
-            
+
             if not file_path:
                 return  # L'utilisateur a annulé
-            
-            # Utiliser la structure JSON des settings existants
+
             settings_data = {
                 "general": {
                     "lang_code": self.app.settings.general.lang_code,
@@ -654,19 +789,15 @@ description:(Vol\\.\\s+(?P<volume>[^\\n]+))
             # Écrire le fichier JSON
             with open(file_path, 'w', encoding='utf-8') as f:
                 json.dump(settings_data, f, indent=2, ensure_ascii=False)
-            
-            # Message de succès avec la nouvelle syntaxe
-            success_dialog = toga.InfoDialog(
-                title=_("Export settings"),
-                message=_("Settings exported successfully\n\nFile saved to: {}").format(file_path)
+
+            self.app._show_info_dialog(
+                _("Export settings"),
+                _("Settings exported successfully\n\nFile saved to: {}").format(file_path),
             )
-            await self.app.main_window.dialog(success_dialog)
-            
+
         except Exception as e:
-            # Message d'erreur avec la nouvelle syntaxe
-            error_dialog = toga.ErrorDialog(
-                title=_("Unable to export settings"),
-                message=_("Unable to export settings:\n{}").format(str(e))
+            self.app._show_info_dialog(
+                _("Unable to export settings"),
+                _("Unable to export settings:\n{}").format(str(e)),
             )
-            await self.app.main_window.dialog(error_dialog)
 

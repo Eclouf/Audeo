@@ -17,12 +17,12 @@ from typing import Callable, Optional
 from urllib.parse import urlparse, urlunparse
 
 import yt_dlp
-import toga
 
 from .settings import AppSettings
 from .views import DownloadsView
 from .download_models import DownloadProgress, DownloadTask
 from .i18n import _
+from .logging_config import setup_ydl_logger, get_logger
 
 class YdlLogHandler(logging.Handler):
     """Handler presonal for yt-dlp"""
@@ -67,24 +67,25 @@ class YdlLogHandler(logging.Handler):
 
 
 class DownloadManager:
+    """Manages download operations and yt-dlp integration"""
+    
     def __init__(
-        self,
-        *,
-        max_workers: int,
-        on_progress: Callable[[DownloadProgress], None],
-        on_finished: Callable[[str], None],
-        on_error: Callable[[str, Exception], None],
-        downloads_view=None,
+        self, 
+        downloads_view: Optional[DownloadsView] = None, 
+        max_workers: int = 3,
         main_window=None,
         on_tasks_ready: Optional[Callable[[list], None]] = None,
+        on_progress: Optional[Callable[[DownloadProgress], None]] = None,
+        on_finished: Optional[Callable[[str], None]] = None,
+        on_error: Optional[Callable[[str, Exception], None]] = None,
     ) -> None:
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
+        self._on_tasks_ready = on_tasks_ready
         self._on_progress = on_progress
         self._on_finished = on_finished
         self._on_error = on_error
         self._downloads_view = downloads_view
         self._main_window = main_window
-        self._on_tasks_ready = on_tasks_ready
         self._lock = threading.Lock()
         self._tasks: dict[str, DownloadTask] = {}
         
@@ -104,6 +105,21 @@ class DownloadManager:
             self._logger.addHandler(self._ydl_handler)
             # Empêcher la propagation aux handlers parents pour éviter les doublons
             self._logger.propagate = False
+
+    def _ui_call(self, fn: Callable, *args, **kwargs) -> None:
+        """Exécute fn sur le thread UI via la fenêtre principale (thread-safe)."""
+        if self._main_window is not None and hasattr(self._main_window, "after"):
+            self._main_window.after(0, lambda: fn(*args, **kwargs))
+        else:
+            fn(*args, **kwargs)
+
+    def _ui_call_tasks_ready(self, tasks) -> None:
+        """Notifie le thread principal que les tâches sont prêtes."""
+        if self._on_tasks_ready:
+            if self._main_window is not None and hasattr(self._main_window, "after"):
+                self._main_window.after(0, lambda: self._on_tasks_ready(tasks))
+            else:
+                self._on_tasks_ready(tasks)
 
     def shutdown(self) -> None:
         # Retirer le handler avant de fermer avec gestion d'erreurs
@@ -162,7 +178,7 @@ class DownloadManager:
     def submit(self, *, url: str, output_dir: Path, kind: str, settings: AppSettings) -> list[DownloadTask]:
         """Downloads a URL or a complete playlist"""
         # Start the animation immediately in the main thread
-        self._downloads_view.process_anim.start()
+        self._ui_call(self._downloads_view.process_anim.start)
         self._downloads_view.log_info(_("URL detection in progress..."))
         
         # Launch detection in a separate thread to avoid blocking the interface
@@ -206,29 +222,17 @@ class DownloadManager:
                     # Show an error dialog
                     if self._main_window:
                         try:
-                            import asyncio
-                            dialog = toga.ErrorDialog(
-                                title=_("Detection error"),
-                                message=_("Error during playlist detection:\n\n{}\n\nProcess stopped.").format(str(e))
+                            self._main_window._show_info_dialog(
+                                _("Detection error"),
+                                _("Error during playlist detection:\n\n{}\n\nProcess stopped.").format(str(e))
                             )
-                            # Schedule dialog display on the main thread with error handling
-                            if hasattr(self._main_window, 'app') and hasattr(self._main_window.app, 'loop'):
-                                def safe_show_dialog():
-                                    try:
-                                        asyncio.create_task(self._main_window.dialog(dialog))
-                                    except Exception as dialog_error:
-                                        # Silently log dialog error
-                                        if self._downloads_view:
-                                            self._downloads_view.log_error(_("Dialog error: {}").format(str(dialog_error)))
-                                
-                                self._main_window.app.loop.call_soon_threadsafe(safe_show_dialog)
                         except Exception as outer_error:
                             # Log any dialog error, regardless of language
                             if self._downloads_view:
                                 self._downloads_view.log_error(_("Dialog setup error: {}").format(str(outer_error)))
                     
                     # Stop the process as soon as an error occurs
-                    self._downloads_view.process_anim.stop()
+                    self._ui_call(self._downloads_view.process_anim.stop)
                     return None  # Return None to indicate a fatal error
                 
                 # Create tasks
@@ -253,50 +257,30 @@ class DownloadManager:
                     tasks = [self._task(url, final_output_dir, kind, settings, False)]
                 
                 # Stop the detection animation
-                self._downloads_view.process_anim.stop()
+                self._ui_call(self._downloads_view.process_anim.stop)
                 
                 # Notify the main thread that tasks are ready
-                if self._on_tasks_ready:
-                    if hasattr(self._main_window, 'app') and hasattr(self._main_window.app, 'loop'):
-                        self._main_window.app.loop.call_soon_threadsafe(
-                            lambda: self._on_tasks_ready(tasks)
-                        )
+                self._ui_call_tasks_ready(tasks)
                     
             except Exception as e:
-                self._downloads_view.process_anim.stop()
+                self._ui_call(self._downloads_view.process_anim.stop)
                 if self._downloads_view:
                     self._downloads_view.log_error(_("Error: {}").format(str(e)))
                 
                 # Show an error dialog
                 if self._main_window:
                     try:
-                        import asyncio
-                        dialog = toga.ErrorDialog(
-                            title=_("Submission error"),
-                            message=_("Error during download preparation:\n\n{}\n\nProcess stopped.").format(str(e))
+                        self._main_window._show_info_dialog(
+                            _("Submission error"),
+                            _("Error during download preparation:\n\n{}\n\nProcess stopped.").format(str(e))
                         )
-                        # Schedule dialog display on the main thread with error handling
-                        if hasattr(self._main_window, 'app') and hasattr(self._main_window.app, 'loop'):
-                            def safe_show_dialog():
-                                try:
-                                    asyncio.create_task(self._main_window.dialog(dialog))
-                                except Exception as dialog_error:
-                                    # Silently log dialog error
-                                    if self._downloads_view:
-                                        self._downloads_view.log_error(_("Dialog error: {}").format(str(dialog_error)))
-                            
-                            self._main_window.app.loop.call_soon_threadsafe(safe_show_dialog)
                     except Exception as outer_error:
                         # Silently log dialog setup error
                         if self._downloads_view:
                             self._downloads_view.log_error(_("Dialog setup error: {}").format(str(outer_error)))
                 
                 # Stop the process as soon as an error occurs
-                if self._on_tasks_ready:
-                    if hasattr(self._main_window, 'app') and hasattr(self._main_window.app, 'loop'):
-                        self._main_window.app.loop.call_soon_threadsafe(
-                            lambda: self._on_tasks_ready(None)
-                        )
+                self._ui_call_tasks_ready(None)
         
         # Launch detection in a separate thread
         thread = threading.Thread(target=_detect_and_submit, daemon=True)
@@ -311,6 +295,21 @@ class DownloadManager:
             # Cette méthode sera appelée depuis le thread principal
             # On peut déclencher un événement ou notifier l'application
         pass
+
+    def _on_progress(self, progress: DownloadProgress) -> None:
+        """Callback called when download progress updates"""
+        if self._on_progress:
+            self._on_progress(progress)
+
+    def _on_finished(self, task_id: str) -> None:
+        """Callback called when a download finishes"""
+        if self._on_finished:
+            self._on_finished(task_id)
+
+    def _on_error(self, task_id: str, error: Exception) -> None:
+        """Callback called when a download encounters an error"""
+        if self._on_error:
+            self._on_error(task_id, error)
         
     def _task(self, original_url: str, output_dir: Path, kind: str, settings: AppSettings, playlist: bool) -> DownloadTask:
         """
@@ -507,7 +506,7 @@ class DownloadManager:
         
     def _run_playlist_download(self, task: DownloadTask) -> None:
         """Télécharge toute la playlist d'un seul coup"""
-        self._downloads_view.process_anim.start()
+        self._ui_call(self._downloads_view.process_anim.start)
         try:
             if self._downloads_view:
                 self._downloads_view.log_info(_("Starting download: {}").format(task.url))
@@ -554,7 +553,7 @@ class DownloadManager:
         return f"{num_bytes:.1f} {units[i]}"
 
     def _run_download(self, task: DownloadTask) -> None:
-        self._downloads_view.process_anim.stop()
+        self._ui_call(self._downloads_view.process_anim.stop)
         try:
             # Vérifier si la tâche a été annulée avant de commencer
             if task.cancelled:
