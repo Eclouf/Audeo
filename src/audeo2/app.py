@@ -6,28 +6,33 @@ import shutil
 import subprocess
 import sys
 import tarfile
-import tempfile
 from pathlib import Path
 from typing import Optional, List
 from urllib.parse import urlparse
 from urllib.request import urlopen
 from urllib.request import urlretrieve
 import webbrowser
+import queue
 import threading
+import traceback
+import uuid
 import customtkinter as ctk
 from PIL import Image as PILImage, ImageTk
 import imageio_ffmpeg
 
 from .download_manager import DownloadManager, DownloadProgress
-from .widgets import DownloadCard, DownloadCardModel, FinishedDownloadCard
+from .widgets import (
+    DownloadCard, DownloadCardModel, FinishedDownloadCard,
+    apply_window_icon, load_themed_icon,
+)
 from .views import DownloadsView, FinishedDownloadsView, VideoInfoView, SettingsView
 from .settings import AppSettings, load_settings, save_settings
 from .ffmpeg import FFmpegManager
 from .i18n import i18n, _
 from .constants import ViewName
+from .formatting import fmt_bytes
 from . import update as updater
 
-FRAME_COLOR = "#d3d3d3"
 FRAME_THICKNESS = 1.5
 
 class Audeo2App(ctk.CTk):
@@ -40,10 +45,11 @@ class Audeo2App(ctk.CTk):
         
         self.title("Audeo-2")
         self.geometry("1100x600")
+        self.minsize(850, 500)
         
         # Initialize paths and settings
         self.download_dir = Path.home() / "Downloads" / "Audeo-2"
-        self.max_workers = 3
+        self.max_workers = 3  # valeur par défaut, ajustée après chargement des settings
 
         cfg_dir = Path.home() / ".config" / "Audeo-2"
         try:
@@ -59,6 +65,22 @@ class Audeo2App(ctk.CTk):
 
         self.settings: AppSettings = load_settings(self.config_dir)
 
+        # Appliquer le thème sauvegardé
+        try:
+            ctk.set_appearance_mode(self.settings.general.theme or "dark")
+        except Exception:
+            pass
+
+        # Nombre de workers simultanés depuis les settings
+        try:
+            self.max_workers = max(1, min(8, int(self.settings.general.max_workers or 3)))
+        except Exception:
+            self.max_workers = 3
+
+        # Executor dédié aux vignettes (ne pas bloquer les téléchargements)
+        import concurrent.futures
+        self._thumb_executor = concurrent.futures.ThreadPoolExecutor(max_workers=2, thread_name_prefix="thumb")
+
         # Restaurer le dossier de destination sauvegardé s'il existe
         if self.settings.general.download_dir:
             try:
@@ -70,6 +92,11 @@ class Audeo2App(ctk.CTk):
 
         # Appliquer la langue sauvegardée
         i18n.set_language(self.settings.general.lang_code)
+
+        # File d'attente pour les callbacks venant des threads workers
+        # (tkinter.after() n'est PAS thread-safe : tout passage par ici)
+        self._ui_queue: queue.Queue = queue.Queue()
+        self.after(30, self._ui_pump)
         
         # Vérifier si le chemin ffmpeg sauvegardé existe
         if self.settings.ffmpeg_path and not Path(self.settings.ffmpeg_path).exists():
@@ -89,7 +116,11 @@ class Audeo2App(ctk.CTk):
             pass
 
         self._cards: dict[str, DownloadCard] = {}
+        self._pending_task_ids: set[str] = set()
         self._thumb_cache: dict[str, Path] = {}
+        self._active_downloads: dict[str, tuple[int, int, float]] = {}  # task_id -> (downloaded_bytes, total_bytes, percent)
+        self._progress_pending: dict[str, DownloadProgress] = {}  # Dernier event par tâche (coalescence)
+        self._progress_flush_scheduled = False
         self._thumb_inflight: set[str] = set()
         
         # Build UI
@@ -117,14 +148,8 @@ class Audeo2App(ctk.CTk):
         self._bootstrap_ffmpeg()
     
     def _build_ui(self) -> None:
-        # Set app icon
-        app_icon_path = Path(__file__).resolve().parent / "ressources" / "audeo.png"
-        if app_icon_path.exists():
-            try:
-                icon = PILImage.open(app_icon_path)
-                self.iconbitmap(app_icon_path)
-            except Exception:
-                pass
+        # Set app icon (.ico requis par iconbitmap sous Windows)
+        apply_window_icon(self)
 
         # Create main layout
         self.main_container = ctk.CTkFrame(self)
@@ -141,7 +166,6 @@ class Audeo2App(ctk.CTk):
             icon_path = icons_dir / f"{icon_name}-24.png"
             try:
                 if icon_path.exists():
-                    from .widgets import load_themed_icon
                     return load_themed_icon(icon_path, size=(24, 24))
             except Exception:
                 pass
@@ -234,6 +258,7 @@ class Audeo2App(ctk.CTk):
                 except Exception:
                     pass
             self._cards.clear()
+            self._active_downloads.clear()
 
             # Recréer proprement les vues
             self.downloads_view = DownloadsView(self)
@@ -272,9 +297,9 @@ class Audeo2App(ctk.CTk):
         try:
             progress_bar.set(percent)
             details_label.configure(text=message)
-            print(f"[Progress] {percent}% - {message}")
+            self.downloads_view.log_debug(f"[Progress] {percent}% - {message}")
         except Exception as e:
-            print(f"[Progress update error] {e}")
+            self.downloads_view.log_debug(f"[Progress update error] {e}")
 
     def _bootstrap_ffmpeg(self) -> None:
         """Vérifie et télécharge ffmpeg/ffprobe si nécessaire"""
@@ -295,6 +320,7 @@ class Audeo2App(ctk.CTk):
             try:
                 # Create custom dialog
                 dialog = ctk.CTkToplevel(self)
+                apply_window_icon(dialog)
                 dialog.title("Télécharger ffmpeg complet ?")
                 dialog.geometry("500x200")
                 
@@ -334,6 +360,7 @@ class Audeo2App(ctk.CTk):
                 
                 # Créer une fenêtre de progression
                 progress_window = ctk.CTkToplevel(self)
+                apply_window_icon(progress_window)
                 progress_window.title("Téléchargement ffmpeg")
                 progress_window.geometry("400x150")
                 
@@ -354,7 +381,7 @@ class Audeo2App(ctk.CTk):
                 def on_progress(percent, message):
                     """Callback appelé par le téléchargeur (depuis un thread)"""
                     # Mettre à jour la GUI de façon thread-safe
-                    self.after(0, self._update_progress_ui, progress_bar, details_label, percent, message)
+                    self.dispatch_ui(lambda: self._update_progress_ui(progress_bar, details_label, percent, message))
                 
                 def download_in_thread():
                     try:
@@ -363,21 +390,20 @@ class Audeo2App(ctk.CTk):
                             self.settings.ffmpeg_path = str(exe)
                             self.save_settings()
                             print(f"[Bootstrap] FFmpeg saved: {exe}")
-                            self.after(0, lambda: status_label.configure(text="ffmpeg installé avec succès!"))
-                            self.after(0, lambda: progress_bar.set(100))
-                            self.after(0, lambda: details_label.configure(text=str(exe)))
-                            # Fermer la fenêtre après 2 secondes
-                            self.after(2000, progress_window.destroy)
+                            self.dispatch_ui(lambda: status_label.configure(text="ffmpeg installé avec succès!"))
+                            self.dispatch_ui(lambda: progress_bar.set(100))
+                            self.dispatch_ui(lambda: details_label.configure(text=str(exe)))
+                            # Fermer la fenêtre après 2 secondes (after() appelé sur le thread UI)
+                            self.dispatch_ui(lambda: self.after(2000, progress_window.destroy))
                         else:
                             print("[Bootstrap] FFmpeg download failed (returned None)")
-                            self.after(0, lambda: status_label.configure(text="Erreur lors du téléchargement"))
-                            self.after(0, lambda: details_label.configure(text="Veuillez réessayer plus tard"))
+                            self.dispatch_ui(lambda: status_label.configure(text="Erreur lors du téléchargement"))
+                            self.dispatch_ui(lambda: details_label.configure(text="Veuillez réessayer plus tard"))
                     except Exception as e:
                         print(f"[Bootstrap] FFmpeg download error: {e}")
-                        import traceback
                         traceback.print_exc()
-                        self.after(0, lambda: status_label.configure(text="Erreur lors du téléchargement"))
-                        self.after(0, lambda: details_label.configure(text=str(e)))
+                        self.dispatch_ui(lambda: status_label.configure(text="Erreur lors du téléchargement"))
+                        self.dispatch_ui(lambda: details_label.configure(text=str(e)))
                 
                 # Lancer le téléchargement dans un thread séparé
                 thread = threading.Thread(target=download_in_thread, daemon=True)
@@ -388,6 +414,26 @@ class Audeo2App(ctk.CTk):
 
         # Utiliser after pour planifier après le démarrage complet
         self.after(100, _prompt_and_install)
+
+    def dispatch_ui(self, fn) -> None:
+        """Planifie fn sur le thread UI. Safe à appeler depuis n'importe quel thread."""
+        self._ui_queue.put(fn)
+
+    def _ui_pump(self) -> None:
+        """Exécute les callbacks en file (tourne sur le thread UI)."""
+        try:
+            while True:
+                fn = self._ui_queue.get_nowait()
+                try:
+                    fn()
+                except Exception:
+                    pass
+        except queue.Empty:
+            pass
+        try:
+            self.after(30, self._ui_pump)
+        except Exception:
+            pass
 
     def _go_downloads(self) -> None:
         self._show_view(ViewName.DOWNLOADS)
@@ -456,6 +502,7 @@ class Audeo2App(ctk.CTk):
     def _show_info_dialog(self, title: str, message: str) -> None:
         """Show an info dialog using CustomTkinter"""
         dialog = ctk.CTkToplevel(self)
+        apply_window_icon(dialog)
         dialog.title(title)
         dialog.geometry("500x200")
         
@@ -468,6 +515,7 @@ class Audeo2App(ctk.CTk):
     def _show_question_dialog(self, title: str, message: str, on_yes_callback) -> None:
         """Show a question dialog using CustomTkinter"""
         dialog = ctk.CTkToplevel(self)
+        apply_window_icon(dialog)
         dialog.title(title)
         dialog.geometry("500x200")
         
@@ -497,6 +545,7 @@ class Audeo2App(ctk.CTk):
         cache_dir.mkdir(parents=True, exist_ok=True)
 
         progress_window = ctk.CTkToplevel(self)
+        apply_window_icon(progress_window)
         progress_window.title(_("Downloading update"))
         progress_window.geometry("520x160")
         
@@ -518,14 +567,14 @@ class Audeo2App(ctk.CTk):
                 if total and total > 0:
                     pct = int((downloaded / total) * 100)
                     pct = max(0, min(100, pct))
-                    self.after(0, lambda: progress_bar.set(pct / 100))
-                    self.after(0, lambda: details_label.configure(text=f"{filename} ({pct}%)"))
+                    self.dispatch_ui(lambda: progress_bar.set(pct / 100))
+                    self.dispatch_ui(lambda: details_label.configure(text=f"{filename} ({pct}%)"))
                 else:
                     # Unknown size: show an indeterminate-ish progress by clamping.
                     current_val = progress_bar.get()
                     new_val = min(0.99, current_val + 0.01)
-                    self.after(0, lambda: progress_bar.set(new_val))
-                    self.after(0, lambda: details_label.configure(text=filename))
+                    self.dispatch_ui(lambda: progress_bar.set(new_val))
+                    self.dispatch_ui(lambda: details_label.configure(text=filename))
             except Exception:
                 pass
 
@@ -537,12 +586,12 @@ class Audeo2App(ctk.CTk):
                     on_progress=on_progress,
                 )
                 
-                self.after(0, lambda: progress_bar.set(1.0))
-                self.after(0, lambda: status_label.configure(text=_("Download complete")))
-                self.after(0, lambda: details_label.configure(text=str(downloaded_path)))
+                self.dispatch_ui(lambda: progress_bar.set(1.0))
+                self.dispatch_ui(lambda: status_label.configure(text=_("Download complete")))
+                self.dispatch_ui(lambda: details_label.configure(text=str(downloaded_path)))
                 
                 # Give UI a moment to refresh
-                self.after(300, progress_window.destroy)
+                self.dispatch_ui(lambda: self.after(300, progress_window.destroy))
                 
             except Exception as e:
                 try:
@@ -550,7 +599,7 @@ class Audeo2App(ctk.CTk):
                 except Exception:
                     pass
                 try:
-                    self.after(0, lambda: self._show_info_dialog(_("Error"), f"{_('Unable to download update')}: {e}"))
+                    self.dispatch_ui(lambda: self._show_info_dialog(_("Error"), f"{_('Unable to download update')}: {e}"))
                 except Exception:
                     pass
 
@@ -576,19 +625,6 @@ class Audeo2App(ctk.CTk):
         else:
             self.settings_view.widget.pack(fill="both", expand=True)
 
-    def _fmt_bytes(self, n: Optional[int]) -> str:
-        if n is None:
-            return "-"
-        if n <= 0:
-            return "0 B"
-        units = ["B", "KB", "MB", "GB", "TB"]
-        i = 0
-        v = float(n)
-        while v >= 1024.0 and i < len(units) - 1:
-            v /= 1024.0
-            i += 1
-        return f"{v:.1f} {units[i]}"
-
     def _build_manager(self) -> DownloadManager:
         self.manager = DownloadManager(
             max_workers=self.max_workers,
@@ -601,9 +637,11 @@ class Audeo2App(ctk.CTk):
         )
         return self.manager
 
-    def _on_add(self) -> None:
+    def _on_add(self, kind: Optional[str] = None) -> None:
         url = (self.downloads_view.url_input.get() or "").strip()
         if not url:
+            self.downloads_view.log_info(_("Please enter a URL"))
+            self.downloads_view.url_input.focus_set()
             return
 
         if not self._is_valid_url(url):
@@ -611,13 +649,31 @@ class Audeo2App(ctk.CTk):
             return
 
         # L'OptionMenu affiche des libellés localisés : convertir vers le code stable
-        kind_display = str(self.downloads_view.kind_select.get() or "")
-        kind = getattr(self.downloads_view, "_kind_display_to_code", {}).get(kind_display, "video")
+        if kind is None:
+            kind_display = str(self.downloads_view.kind_select.get() or "")
+            kind = getattr(self.downloads_view, "_kind_display_to_code", {}).get(kind_display, "video")
+        else:
+            kind = str(kind)
 
-        # Lancer le téléchargement (retourne immédiatement, les tâches seront créées de manière asynchrone)
-        self.manager.submit(url=url, output_dir=self.download_dir, kind=kind, settings=self.settings)
-        
-        # L'interface reste responsive, les cartes seront créées via le callback _on_tasks_ready
+        # Créer la carte immédiatement avec un task_id pré-généré
+        task_id = str(uuid.uuid4())
+        self._pending_task_ids.add(task_id)
+        card = DownloadCard(
+            DownloadCardModel(task_id=task_id, title=url, url=url, kind=kind),
+            parent=self.cards_box,
+        )
+        card.set_app_reference(self)
+        self._cards[task_id] = card
+        self.downloads_view.cards_box.add(card)
+        self.downloads_view._update_content_display()
+
+        # Prendre en compte la tâche dans la barre de progression globale
+        self._active_downloads[task_id] = (0, 0, 0.0)
+        self._update_global_progress()
+
+        # Lancer le téléchargement (la détection playlist tourne en arrière-plan)
+        self.manager.submit(url=url, output_dir=self.download_dir, kind=kind, settings=self.settings, task_id=task_id)
+
         self.downloads_view.url_input.delete(0, 'end')
 
     def _is_valid_url(self, url: str) -> bool:
@@ -634,29 +690,96 @@ class Audeo2App(ctk.CTk):
     def _on_tasks_ready(self, tasks):
         """Callback appelé quand les tâches de téléchargement sont prêtes"""
         if tasks is None:
-            # Erreur fatale, ne rien faire
+            # Erreur fatale pendant la détection : marquer les cartes en attente
+            for tid in list(self._pending_task_ids):
+                card = self._cards.get(tid)
+                self._active_downloads.pop(tid, None)
+                if card is not None:
+                    try:
+                        card.mark_error(_("Detection failed"))
+                    except Exception:
+                        pass
+            self._pending_task_ids.clear()
+            self._update_global_progress()
             return
-        
-        # Créer une carte pour chaque tâche
+
+        # Créer une carte pour chaque tâche (sauf si déjà créée à la soumission)
         for task in tasks:
+            self._pending_task_ids.discard(task.task_id)
+            if task.task_id in self._cards:
+                continue
             card = DownloadCard(DownloadCardModel(task_id=task.task_id, title=task.url, url=task.url, kind=task.kind), parent=self.cards_box)
             card.set_app_reference(self)  # Définir la référence à l'application
             self._cards[task.task_id] = card
+            self._active_downloads.setdefault(task.task_id, (0, 0, 0.0))
             self.downloads_view.cards_box.add(card)
-            
+
+        # Les IDs encore en attente et annulés pendant la détection n'arriveront
+        # jamais : retirer leurs cartes silencieusement (déjà détruites par on_stop).
+        cancelled_ids = getattr(getattr(self, "manager", None), "_cancelled_task_ids", set())
+        arrived = {t.task_id for t in tasks}
+        for tid in list(self._pending_task_ids):
+            if tid in cancelled_ids and tid not in arrived:
+                self._pending_task_ids.discard(tid)
+                self._active_downloads.pop(tid, None)
+                card = self._cards.pop(tid, None)
+                if card is not None:
+                    try:
+                        card.destroy()
+                    except Exception:
+                        pass
+
+        self._update_global_progress()
+
         # Mettre à jour l'affichage
         self.downloads_view._update_content_display()
 
     def _threadsafe_progress(self, progress: DownloadProgress) -> None:
-        self.after(0, self._apply_progress, progress)
+        # Coalescence : yt-dlp émet des centaines d'events/seconde.
+        # On ne garde que le dernier par tâche et on flush une fois par tick UI.
+        self._progress_pending[progress.task_id] = progress
+        if not self._progress_flush_scheduled:
+            self._progress_flush_scheduled = True
+            self.dispatch_ui(self._flush_progress)
+
+    def _flush_progress(self) -> None:
+        self._progress_flush_scheduled = False
+        pending = self._progress_pending
+        self._progress_pending = {}
+        for p in pending.values():
+            try:
+                self._apply_progress(p)
+            except Exception:
+                pass
 
     def _threadsafe_finished(self, task_id: str) -> None:
-        self.after(0, self._apply_finished, task_id)
+        self.dispatch_ui(lambda: self._apply_finished(task_id))
 
     def _threadsafe_error(self, task_id: str, e: Exception) -> None:
-        self.after(0, self._apply_error, task_id, e)
+        self.dispatch_ui(lambda: self._apply_error(task_id, e))
 
     def _apply_progress(self, progress: DownloadProgress) -> None:
+        # Ignorer les events obsolètes de tâches déjà terminées/annulées
+        manager_tasks = getattr(getattr(self, "manager", None), "_tasks", {})
+        task_alive = (
+            progress.task_id in manager_tasks
+            or progress.task_id in self._cards
+            or progress.task_id in self._pending_task_ids
+        )
+        if not task_alive and progress.status != "finished":
+            return
+
+        # Suivi pour la barre de progression globale
+        if progress.status in ("preparing", "downloading", "paused", "post_processing"):
+            self._active_downloads[progress.task_id] = (
+                progress.downloaded_bytes or 0,
+                progress.total_bytes or 0,
+                progress.percent or 0.0,
+            )
+        else:
+            self._active_downloads.pop(progress.task_id, None)
+        self._update_global_progress()
+
         card = self._cards.get(progress.task_id)
         if not card:
             return
@@ -687,7 +810,7 @@ class Audeo2App(ctk.CTk):
                 try:
                     img = PILImage.open(cached)
                     ctk_image = ctk.CTkImage(img, size=(200, 120))
-                    card.thumb.configure(image=ctk_image)
+                    card.set_thumbnail(ctk_image, source_url=url)
                 except Exception:
                     return
             return
@@ -708,9 +831,9 @@ class Audeo2App(ctk.CTk):
                     img = img.convert("RGB")
                     img.thumbnail((480, 270))
                     img.save(target, format="PNG", optimize=True)
-                self.after(0, _apply, target)
+                self.dispatch_ui(lambda: _apply(target))
             except Exception:
-                self.after(0, _clear_inflight)
+                self.dispatch_ui(_clear_inflight)
                 return
 
         def _apply(path: Path) -> None:
@@ -722,30 +845,66 @@ class Audeo2App(ctk.CTk):
                 try:
                     img = PILImage.open(path)
                     ctk_image = ctk.CTkImage(img, size=(200, 120))
-                    card.thumb.configure(image=ctk_image)
+                    card.set_thumbnail(ctk_image, source_url=url)
                 except Exception:
                     return
 
         def _clear_inflight(u: str = url) -> None:
             self._thumb_inflight.discard(u)
 
-        self.manager._executor.submit(_bg)
+        self._thumb_executor.submit(_bg)
+
+    def _dir_size_text(self, directory: Path) -> str:
+        """Calcule la taille totale des fichiers d'un dossier."""
+        try:
+            total = sum(f.stat().st_size for f in directory.rglob("*") if f.is_file())
+            return fmt_bytes(total) if total > 0 else "-"
+        except Exception:
+            return "-"
 
     def _apply_finished(self, task_id: str) -> None:
         card = self._cards.get(task_id)
         if not card:
             return
 
-        # Utiliser le dossier de destination directement
-        download_dir = Path(self.download_dir)
-        size_text = "-"
-        
+        # Taille réelle : fichiers produits par la tâche, sinon tout le dossier
+        task = self.manager._tasks.get(task_id) if hasattr(self, "manager") else None
+        download_dir = Path(task.output_dir) if task is not None else Path(self.download_dir)
+        filepaths = getattr(task, "filepaths", None) or []
+        real_sizes = []
+        for fp in filepaths:
+            try:
+                p = Path(fp)
+                if p.exists() and p.is_file():
+                    real_sizes.append(p.stat().st_size)
+            except Exception:
+                pass
+        if real_sizes:
+            size_text = fmt_bytes(sum(real_sizes))
+        else:
+            size_text = self._dir_size_text(download_dir)
+        self.manager._tasks.pop(task_id, None)
+
         self.downloads_view.log_info(f"{_("Download finished")}: {card.title_label.cget('text')}")
 
         finished_card = FinishedDownloadCard(title=card.title_label.cget('text'), size_text=size_text, file_path=download_dir, parent=self.finished_downloads_view.cards_box)
         finished_card.set_app_reference(self)  # Définir la référence à l'application
-        if hasattr(card.thumb, 'image') and card.thumb.image is not None:
-            finished_card.thumb.configure(image=card.thumb.image)
+        # Réutiliser la miniature téléchargée (redimensionnée pour la petite carte)
+        thumb_url = getattr(card, "_thumbnail_url", None)
+        cached = self._thumb_cache.get(thumb_url) if thumb_url else None
+        if cached and cached.exists():
+            try:
+                img = PILImage.open(cached)
+                finished_card._ctk_thumb = ctk.CTkImage(img, size=(120, 68))
+                finished_card.thumb.configure(image=finished_card._ctk_thumb)
+            except Exception:
+                pass
+        elif getattr(card, "_ctk_thumb", None) is not None:
+            try:
+                finished_card._ctk_thumb = card._ctk_thumb
+                finished_card.thumb.configure(image=card._ctk_thumb)
+            except Exception:
+                pass
 
         try:
             card.destroy()
@@ -754,15 +913,58 @@ class Audeo2App(ctk.CTk):
         self.finished_downloads_view.cards_box.add(finished_card)
         self._cards.pop(task_id, None)
         
+        self._active_downloads.pop(task_id, None)
+        self._update_global_progress()
+
         # Mettre à jour l'affichage
         self.downloads_view._update_content_display()
 
     def _apply_error(self, task_id: str, e: Exception) -> None:
         card = self._cards.get(task_id)
+        self._active_downloads.pop(task_id, None)
+        self._update_global_progress()
         if card:
             card.mark_error(str(e))
             # Afficher une fenêtre de dialogue d'erreur
             self._show_info_dialog(_("Download error"), f"{str(e)}")
+
+    def _update_global_progress(self) -> None:
+        """Agrège la progression de toutes les tâches actives dans la barre globale."""
+        active = self._active_downloads
+        if not active:
+            self.downloads_view.hide_global_progress()
+            return
+
+        n = len(active)
+        entries = list(active.values())
+
+        # Ratio par tâche : bytes si taille connue, sinon dernier percent yt-dlp
+        ratios = []
+        total_dl = total_sz = 0
+        all_sized = True
+        for dl, sz, pct in entries:
+            if sz and sz > 0:
+                ratios.append(max(0.0, min(1.0, dl / sz)))
+                total_dl += dl
+                total_sz += sz
+            else:
+                all_sized = False
+                ratios.append(max(0.0, min(1.0, pct or 0.0)))
+
+        if not ratios:
+            self.downloads_view.hide_global_progress()
+            return
+
+        if all_sized and total_sz > 0:
+            # Toutes les tailles connues : pondération par les octets
+            pct = total_dl / total_sz
+            text = f"{n} — {fmt_bytes(total_dl)} / {fmt_bytes(total_sz)} ({pct * 100:.0f}%)"
+        else:
+            # Tailles partielles/inconnues : moyenne des ratios par tâche
+            pct = sum(ratios) / len(ratios)
+            text = f"{n} — {pct * 100:.0f}%"
+
+        self.downloads_view.set_global_progress(pct, text)
 
     def _on_clear_finished(self) -> None:
         try:
@@ -770,6 +972,21 @@ class Audeo2App(ctk.CTk):
                 widget.destroy()
         except Exception:
             pass
+
+    def destroy(self) -> None:
+        """Ferme proprement les executors avant destruction de la fenêtre."""
+        try:
+            if getattr(self, "manager", None) is not None:
+                self.manager.shutdown()
+        except Exception:
+            pass
+        try:
+            if getattr(self, "_thumb_executor", None) is not None:
+                self._thumb_executor.shutdown(wait=False)
+        except Exception:
+            pass
+        super().destroy()
+
 
 DESCRIPTION = """
 Audeo is a user-friendly application built with Python and CustomTkinter that enables users to download audio and video content from various online sources.

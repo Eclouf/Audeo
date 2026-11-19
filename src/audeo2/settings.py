@@ -27,6 +27,8 @@ class GeneralSettings:
     proxy_url: str = ""  # URL du proxy (ex: http://proxy.example.com:8080)
     proxy_id: str = ""  # Identifiant proxy
     proxy_pw: str = ""  # Mot de passe proxy
+    theme: str = "dark"  # dark, light ou system
+    max_workers: int = 3  # Nombre max de téléchargements simultanés
 
 
 @dataclass(slots=True)
@@ -92,6 +94,8 @@ def load_settings(config_dir: Path) -> AppSettings:
             proxy_url=str(_get(g, "proxy_url", "") or ""),
             proxy_id=str(_get(g, "proxy_id", "") or ""),
             proxy_pw=str(_get(g, "proxy_pw", "") or ""),
+            theme=str(_get(g, "theme", "dark") or "dark"),
+            max_workers=max(1, min(8, int(_get(g, "max_workers", 3) or 3))),
         ),
         video=VideoSettings(
             preferred_codec=str(_get(v, "preferred_codec", "auto")),

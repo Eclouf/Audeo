@@ -8,6 +8,7 @@ import logging
 import re
 import threading
 import time
+import traceback
 import urllib.parse
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -23,6 +24,7 @@ from .views import DownloadsView
 from .download_models import DownloadProgress, DownloadTask
 from .i18n import _
 from .logging_config import setup_ydl_logger, get_logger
+from .options_formatter import OptionsFormatter
 
 class YdlLogHandler(logging.Handler):
     """Handler presonal for yt-dlp"""
@@ -80,6 +82,7 @@ class DownloadManager:
         on_error: Optional[Callable[[str, Exception], None]] = None,
     ) -> None:
         self._executor = ThreadPoolExecutor(max_workers=max_workers)
+        self.max_workers = max_workers
         self._on_tasks_ready = on_tasks_ready
         self._on_progress = on_progress
         self._on_finished = on_finished
@@ -88,6 +91,7 @@ class DownloadManager:
         self._main_window = main_window
         self._lock = threading.Lock()
         self._tasks: dict[str, DownloadTask] = {}
+        self._cancelled_task_ids: set[str] = set()  # IDs annulés avant même la création de la tâche
         
         # Configurer le logger yt-dlp une seule fois
         self._logger = logging.getLogger("yt_dlp")
@@ -108,16 +112,22 @@ class DownloadManager:
 
     def _ui_call(self, fn: Callable, *args, **kwargs) -> None:
         """Exécute fn sur le thread UI via la fenêtre principale (thread-safe)."""
-        if self._main_window is not None and hasattr(self._main_window, "after"):
-            self._main_window.after(0, lambda: fn(*args, **kwargs))
+        mw = self._main_window
+        if mw is not None and hasattr(mw, "dispatch_ui"):
+            mw.dispatch_ui(lambda: fn(*args, **kwargs))
+        elif mw is not None and hasattr(mw, "after"):
+            mw.after(0, lambda: fn(*args, **kwargs))
         else:
             fn(*args, **kwargs)
 
     def _ui_call_tasks_ready(self, tasks) -> None:
         """Notifie le thread principal que les tâches sont prêtes."""
         if self._on_tasks_ready:
-            if self._main_window is not None and hasattr(self._main_window, "after"):
-                self._main_window.after(0, lambda: self._on_tasks_ready(tasks))
+            mw = self._main_window
+            if mw is not None and hasattr(mw, "dispatch_ui"):
+                mw.dispatch_ui(lambda: self._on_tasks_ready(tasks))
+            elif mw is not None and hasattr(mw, "after"):
+                mw.after(0, lambda: self._on_tasks_ready(tasks))
             else:
                 self._on_tasks_ready(tasks)
 
@@ -138,8 +148,10 @@ class DownloadManager:
             
         self._executor.shutdown(wait=False, cancel_futures=False)
         
-    def cancel_download(self, task_id: str) -> None:
-        """Annule un téléchargement spécifique"""
+    def cancel_download(self, task_id: str) -> bool:
+        """Annule un téléchargement spécifique. Retourne True si une tâche existante a été annulée."""
+        # Enregistrer l'ID même si la tâche n'existe pas encore (détection en cours)
+        self._cancelled_task_ids.add(task_id)
         with self._lock:
             task = self._tasks.get(task_id)
             if task:
@@ -156,6 +168,8 @@ class DownloadManager:
                 # Notifier l'application
                 if self._downloads_view:
                     self._downloads_view.log_info(_("Download {} marked for cancellation").format(task_id))
+                return True
+        return False
                     
     def pause_download(self, task_id: str) -> None:
         """Pauses a specific download"""
@@ -175,15 +189,13 @@ class DownloadManager:
                 if self._downloads_view:
                     self._downloads_view.log_info(_("Download {} resumed").format(task_id))
 
-    def submit(self, *, url: str, output_dir: Path, kind: str, settings: AppSettings) -> list[DownloadTask]:
+    def submit(self, *, url: str, output_dir: Path, kind: str, settings: AppSettings, task_id: Optional[str] = None) -> list[DownloadTask]:
         """Downloads a URL or a complete playlist"""
         # Start the animation immediately in the main thread
         self._ui_call(self._downloads_view.process_anim.start)
         self._downloads_view.log_info(_("URL detection in progress..."))
         
         # Launch detection in a separate thread to avoid blocking the interface
-        import threading
-        
         def _detect_and_submit():
             try:
                 is_playlist = False
@@ -200,37 +212,42 @@ class DownloadManager:
                     
                     with yt_dlp.YoutubeDL(options) as ydl:
                         info = ydl.extract_info(url, download=False)
-                        
-                        # Detection playlist yt-dlp
-                        is_playlist = (
-                            info.get("ie_key") == "Playlist" or 
-                            info.get('_type') == 'playlist' or 
-                            info.get('playlist_count', 0) > 0 or
-                            'entries' in info
-                        )
+
+                    if info is None:
+                        raise yt_dlp.DownloadError(_("No metadata returned for this URL"))
+
+                    # Detection playlist yt-dlp
+                    is_playlist = (
+                        info.get("ie_key") == "Playlist" or 
+                        info.get('_type') == 'playlist' or 
+                        (info.get('playlist_count') or 0) > 0 or
+                        'entries' in info
+                    )
                         
                     if is_playlist:
                         self._downloads_view.log_info(_("Playlist detected: {}").format(url))
-                        print(_("Playlist detected by yt-dlp"))
+                        self._downloads_view.log_debug(_("Playlist detected by yt-dlp"))
                     else:
-                        print(_("Single video detected"))
+                        self._downloads_view.log_debug(_("Single video detected"))
                         
                 except Exception as e:
-                    # Detection error - simply log and stop
+                    # Detection error - log with full traceback for diagnosis
                     self._downloads_view.log_error(_("Detection error: {}").format(str(e)))
-                    
-                    # Show an error dialog
+                    self._downloads_view.log_debug(traceback.format_exc())
+
+                    # Show an error dialog (sur le thread UI)
                     if self._main_window:
-                        try:
-                            self._main_window._show_info_dialog(
-                                _("Detection error"),
-                                _("Error during playlist detection:\n\n{}\n\nProcess stopped.").format(str(e))
-                            )
-                        except Exception as outer_error:
-                            # Log any dialog error, regardless of language
-                            if self._downloads_view:
-                                self._downloads_view.log_error(_("Dialog setup error: {}").format(str(outer_error)))
-                    
+                        def _show_detection_error():
+                            try:
+                                self._main_window._show_info_dialog(
+                                    _("Detection error"),
+                                    _("Error during playlist detection:\n\n{}\n\nProcess stopped.").format(str(e))
+                                )
+                            except Exception as outer_error:
+                                if self._downloads_view:
+                                    self._downloads_view.log_error(_("Dialog setup error: {}").format(str(outer_error)))
+                        self._ui_call(_show_detection_error)
+
                     # Stop the process as soon as an error occurs
                     self._ui_call(self._downloads_view.process_anim.stop)
                     return None  # Return None to indicate a fatal error
@@ -238,8 +255,8 @@ class DownloadManager:
                 # Create tasks
                 tasks = []
                 if is_playlist and settings.general.download_playlist:
-                    print(_("Processing playlist"))
                     self._downloads_view.log_info(_("Processing playlist"))
+                    self._downloads_view.log_debug(_("Processing playlist"))
                     self._downloads_view.log_info(_("Items number: {}").format(info.get('playlist_count', 0)))
                     if settings.general.download_playlist and settings.general.playlist_folder_name.strip():
                         playlist_folder_name = settings.general.playlist_folder_name.strip()
@@ -250,15 +267,18 @@ class DownloadManager:
                         final_output_dir = output_dir
                         self._downloads_view.log_info(_("Playlist folder: {}").format(final_output_dir))
                         
-                    tasks = [self._task(url, final_output_dir, kind, settings, True)]
+                    tasks = [self._task(url, final_output_dir, kind, settings, True, task_id=task_id)]
                 else:
-                    print(_("Processing single item"))
+                    self._downloads_view.log_debug(_("Processing single item"))
                     final_output_dir = output_dir
-                    tasks = [self._task(url, final_output_dir, kind, settings, False)]
+                    tasks = [self._task(url, final_output_dir, kind, settings, False, task_id=task_id)]
                 
                 # Stop the detection animation
                 self._ui_call(self._downloads_view.process_anim.stop)
                 
+                # Filtrer les tâches annulées pendant la détection
+                tasks = [t for t in tasks if t.task_id not in self._cancelled_task_ids]
+
                 # Notify the main thread that tasks are ready
                 self._ui_call_tasks_ready(tasks)
                     
@@ -266,19 +286,21 @@ class DownloadManager:
                 self._ui_call(self._downloads_view.process_anim.stop)
                 if self._downloads_view:
                     self._downloads_view.log_error(_("Error: {}").format(str(e)))
-                
-                # Show an error dialog
+                    self._downloads_view.log_debug(traceback.format_exc())
+
+                # Show an error dialog (sur le thread UI)
                 if self._main_window:
-                    try:
-                        self._main_window._show_info_dialog(
-                            _("Submission error"),
-                            _("Error during download preparation:\n\n{}\n\nProcess stopped.").format(str(e))
-                        )
-                    except Exception as outer_error:
-                        # Silently log dialog setup error
-                        if self._downloads_view:
-                            self._downloads_view.log_error(_("Dialog setup error: {}").format(str(outer_error)))
-                
+                    def _show_submission_error():
+                        try:
+                            self._main_window._show_info_dialog(
+                                _("Submission error"),
+                                _("Error during download preparation:\n\n{}\n\nProcess stopped.").format(str(e))
+                            )
+                        except Exception as outer_error:
+                            if self._downloads_view:
+                                self._downloads_view.log_error(_("Dialog setup error: {}").format(str(outer_error)))
+                    self._ui_call(_show_submission_error)
+
                 # Stop the process as soon as an error occurs
                 self._ui_call_tasks_ready(None)
         
@@ -311,12 +333,12 @@ class DownloadManager:
         if self._on_error:
             self._on_error(task_id, error)
         
-    def _task(self, original_url: str, output_dir: Path, kind: str, settings: AppSettings, playlist: bool) -> DownloadTask:
+    def _task(self, original_url: str, output_dir: Path, kind: str, settings: AppSettings, playlist: bool, task_id: Optional[str] = None) -> DownloadTask:
         """
         Creates a download task for a given URL
         """
         task = DownloadTask(
-            task_id=str(uuid.uuid4()), 
+            task_id=task_id or str(uuid.uuid4()), 
             url=original_url, 
             output_dir=output_dir, 
             kind=kind, 
@@ -325,6 +347,12 @@ class DownloadManager:
         )
         with self._lock:
             self._tasks[task.task_id] = task
+        
+        # Ne pas lancer le téléchargement si la tâche a été annulée
+        # (stop pendant la phase de détection)
+        if task.task_id in self._cancelled_task_ids:
+            task.cancelled = True
+            return task
         
         if playlist:
             task.future = self._executor.submit(self._run_playlist_download, task)
@@ -348,13 +376,13 @@ class DownloadManager:
         item_counter = 1  # Commence à 1 pour le premier item
         if task.playlist:
             item_counter = 1
+        seen_download = False  # True une fois le téléchargement réellement lancé
         
         # Verrou pour protéger l'accès au compteur dans les playlists
-        import threading
         counter_lock = threading.Lock() if task.playlist else None
         
         def hook(d: dict) -> None:
-            nonlocal item_counter
+            nonlocal item_counter, seen_download
             
             # Verrouiller l'accès au compteur pour les playlists
             if counter_lock:
@@ -371,7 +399,6 @@ class DownloadManager:
                 # Gérer la pause : attendre que la pause soit levée avec vérification d'annulation
                 pause_check_interval = 0.1  # 100ms
                 while task.paused and not task.cancelled:
-                    import time
                     time.sleep(pause_check_interval)
                     # Vérification plus fréquente de l'annulation pendant la pause
                     if task.cancelled:
@@ -382,7 +409,31 @@ class DownloadManager:
                     raise yt_dlp.DownloadError(_("Download cancelled by user"))
                     
                 status = d.get("status")
+
+                # Événements de post-traitement yt-dlp : chaque post-processeur
+                # émet started/finished avec une clé 'postprocessor'.
+                # Ne pas les confondre avec la fin du téléchargement.
+                if d.get("postprocessor") is not None or status == "started":
+                    if seen_download:
+                        pp_item = (item_counter - 1) if task.playlist else None
+                        pp_total = (info.get('playlist_count') if task.playlist and info else None)
+                        pp_title = d.get("title") or title
+                        pp_title = pp_title[:32] + "..." if len(pp_title) > 32 else pp_title
+                        self._on_progress(
+                            DownloadProgress(
+                                task_id=task.task_id,
+                                status="post_processing",
+                                percent=1.0,
+                                title=pp_title,
+                                thumbnail_url=thumbnail_url,
+                                item_number=pp_item,
+                                total_items=pp_total,
+                            )
+                        )
+                    return
+
                 if status == "downloading":
+                    seen_download = True
                     total = d.get("total_bytes") or d.get("total_bytes_estimate")
                     downloaded = d.get("downloaded_bytes")
                     percent = 0.0
@@ -420,6 +471,10 @@ class DownloadManager:
                         )
                     )
                 elif status == "finished":
+                    seen_download = True
+                    fp = d.get("filepath") or d.get("filename")
+                    if fp:
+                        task.filepaths.append(fp)
                     # Incrémenter le compteur pour le prochain item (playlists uniquement)
                     if task.playlist:
                         # L'item terminé est l'item actuel
@@ -489,9 +544,6 @@ class DownloadManager:
 
     def _ytdl_options(self, task: DownloadTask, info: dict = None) -> dict:
         """Utilise OptionsFormatter pour générer les options yt-dlp"""
-        # Import local pour éviter l'import circulaire
-        from .options_formatter import OptionsFormatter
-        
         # Créer le formatter
         formatter = OptionsFormatter(self._downloads_view)
         
@@ -507,6 +559,11 @@ class DownloadManager:
     def _run_playlist_download(self, task: DownloadTask) -> None:
         """Télécharge toute la playlist d'un seul coup"""
         self._ui_call(self._downloads_view.process_anim.start)
+        # Vérifier si la tâche a été annulée avant de commencer
+        if task.cancelled:
+            if self._downloads_view:
+                self._downloads_view.log_info(_("Download cancelled: {}").format(task.task_id))
+            return
         try:
             if self._downloads_view:
                 self._downloads_view.log_info(_("Starting download: {}").format(task.url))
@@ -529,10 +586,27 @@ class DownloadManager:
             with yt_dlp.YoutubeDL(ytdl_opts) as ydl:
                 ydl.download([task.url])
             
+            # Vérifier si la tâche a été annulée pendant le téléchargement
+            if task.cancelled:
+                if self._downloads_view:
+                    self._downloads_view.log_info(_("Download cancelled: {}").format(task.task_id))
+                return
+            
             if self._downloads_view:
                 self._downloads_view.log_info(_("Playlist completed successfully!"))
             self._on_finished(task.task_id)
             
+        except yt_dlp.DownloadError as e:
+            # Annulation utilisateur : le flag fait foi (fonctionne quelle que soit la langue)
+            if task.cancelled:
+                if self._downloads_view:
+                    self._downloads_view.log_info(_("Download {} cancelled successfully").format(task.task_id))
+                return
+            if self._downloads_view:
+                self._downloads_view.log_error(_("Playlist download error: {}").format(str(e)))
+                self._downloads_view.log_error(_("Original URL: {}").format(task.url))
+                self._downloads_view.log_error(_("Directory: {}").format(task.output_dir))
+            self._on_error(task.task_id, e)
         except Exception as e:
             if self._downloads_view:
                 self._downloads_view.log_error(_("Playlist download error: {}").format(str(e)))
@@ -597,8 +671,8 @@ class DownloadManager:
                 self._downloads_view.log_info(_("Download completed successfully!"))
             self._on_finished(task.task_id)
         except yt_dlp.DownloadError as e:
-            # Vérifier si c'est une annulation utilisateur
-            if "annulé" in str(e).lower() and task.cancelled:
+            # Vérifier si c'est une annulation utilisateur (le flag fait foi)
+            if task.cancelled or "annulé" in str(e).lower() or "cancelled" in str(e).lower():
                 if self._downloads_view:
                     self._downloads_view.log_info(_("Download {} cancelled successfully").format(task.task_id))
                 # Ne pas appeler on_error pour les annulations normales

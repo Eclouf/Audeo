@@ -3,11 +3,13 @@ from __future__ import annotations
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
+from urllib.parse import urlparse
 
 import customtkinter as ctk
 import yt_dlp
 
 from ..i18n import _
+from ..formatting import fmt_bytes
 from ..constants import ViewName
 
 
@@ -28,6 +30,7 @@ class VideoInfoView:
         top_frame.pack(fill="x", padx=5, pady=5)
 
         self.url_input = ctk.CTkEntry(top_frame, placeholder_text=_("Enter video URL..."))
+        self.url_input.bind("<Return>", lambda e: self._on_analyze())
         self.url_input.pack(side="left", fill="x", expand=True, padx=5)
 
         self.analyze_btn = ctk.CTkButton(
@@ -37,6 +40,16 @@ class VideoInfoView:
             width=100,
         )
         self.analyze_btn.pack(side="left", padx=5)
+
+        # Sélecteur vidéo/audio pour le téléchargement
+        self._kind_display_to_code = {_("video"): "video", _("audio"): "audio"}
+        self.kind_select = ctk.CTkOptionMenu(
+            top_frame,
+            values=list(self._kind_display_to_code.keys()),
+            width=130,
+        )
+        self.kind_select.set(_("video"))
+        self.kind_select.pack(side="left", padx=5)
 
         self.download_btn = ctk.CTkButton(
             top_frame,
@@ -119,7 +132,6 @@ class VideoInfoView:
     def _is_valid_url(self, url: str) -> bool:
         """Valide l'URL"""
         try:
-            from urllib.parse import urlparse
             parts = urlparse(url)
             return parts.scheme in {"http", "https"} and bool(parts.netloc)
         except Exception:
@@ -136,7 +148,6 @@ class VideoInfoView:
 
             settings = self.app.settings
             if settings.general.proxy_url:
-                from urllib.parse import urlparse
                 parsed = urlparse(settings.general.proxy_url)
                 if settings.general.proxy_id and settings.general.proxy_pw:
                     proxy_url = f"{parsed.scheme}://{settings.general.proxy_id}:{settings.general.proxy_pw}@{parsed.hostname}:{parsed.port}"
@@ -147,13 +158,22 @@ class VideoInfoView:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
 
-            self.app.after(0, self._update_ui, info)
+            if hasattr(self.app, 'dispatch_ui'):
+                self.app.dispatch_ui(lambda: self._update_ui(info))
+            else:
+                self.app.after(0, self._update_ui, info)
 
         except Exception as e:
             error_msg = f"Erreur lors de l'analyse: {str(e)}"
-            self.app.after(0, self._show_error, error_msg)
+            if hasattr(self.app, 'dispatch_ui'):
+                self.app.dispatch_ui(lambda: self._show_error(error_msg))
+            else:
+                self.app.after(0, self._show_error, error_msg)
         finally:
-            self.app.after(0, self._reset_analyze_button)
+            if hasattr(self.app, 'dispatch_ui'):
+                self.app.dispatch_ui(self._reset_analyze_button)
+            else:
+                self.app.after(0, self._reset_analyze_button)
 
     def _update_ui(self, info: dict) -> None:
         """Met à jour l'interface avec les informations extraites"""
@@ -238,7 +258,7 @@ class VideoInfoView:
                 codec = 'N/A'
 
             filesize = fmt.get('filesize')
-            size_str = self._format_bytes(filesize) if filesize else "N/A"
+            size_str = fmt_bytes(filesize) if filesize else "N/A"
 
             fps = fmt.get('fps')
             if isinstance(fps, float):
@@ -263,18 +283,6 @@ class VideoInfoView:
         height = fmt.get('height', 0) or 0
         resolution = width * height
         return (priority, resolution)
-
-    def _format_bytes(self, n: int) -> str:
-        """Formate les octets en unités lisibles"""
-        if n <= 0:
-            return "0 B"
-        units = ["B", "KB", "MB", "GB", "TB"]
-        i = 0
-        v = float(n)
-        while v >= 1024.0 and i < len(units) - 1:
-            v /= 1024.0
-            i += 1
-        return f"{v:.1f} {units[i]}"
 
     def _show_error(self, message: str) -> None:
         """Affiche un message d'erreur"""
@@ -301,4 +309,6 @@ class VideoInfoView:
         target.delete(0, "end")
         target.insert(0, url)
 
-        self.app._on_add()
+        kind_display = str(self.kind_select.get() or "")
+        kind = self._kind_display_to_code.get(kind_display, "video")
+        self.app._on_add(kind=kind)

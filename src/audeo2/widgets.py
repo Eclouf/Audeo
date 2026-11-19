@@ -1,6 +1,13 @@
 from __future__ import annotations
 
-import math
+import logging
+import os
+import platform
+import subprocess
+import threading
+import time
+import tempfile
+import webbrowser
 from os import path
 from pathlib import Path
 from dataclasses import dataclass
@@ -10,56 +17,72 @@ import customtkinter as ctk
 from PIL import Image as PILImage
 
 from .i18n import _
+from .formatting import fmt_bytes as _fmt_bytes, fmt_eta as _fmt_eta, fmt_speed as _fmt_speed
+
+
+_APP_ICON_PATH: Optional[str] = None
+
+
+def get_app_icon_path() -> Optional[str]:
+    """Retourne le chemin .ico de l'app (audeo.ico, sinon PNG converti en temp)."""
+    global _APP_ICON_PATH
+    if _APP_ICON_PATH is not None:
+        return _APP_ICON_PATH or None
+    base = Path(__file__).resolve().parent / "ressources"
+    ico = base / "audeo.ico"
+    if ico.exists():
+        _APP_ICON_PATH = str(ico)
+        return _APP_ICON_PATH
+    png = base / "audeo.png"
+    if png.exists():
+        try:
+            ico_path = Path(tempfile.gettempdir()) / "audeo_icon.ico"
+            PILImage.open(png).save(
+                ico_path, format="ICO",
+                sizes=[(256, 256), (128, 128), (64, 64), (48, 48), (32, 32), (16, 16)],
+            )
+            _APP_ICON_PATH = str(ico_path)
+            return _APP_ICON_PATH
+        except Exception:
+            pass
+    _APP_ICON_PATH = ""
+    return None
+
+
+def apply_window_icon(win) -> None:
+    """Applique l'icône de l'application à une fenêtre Tk/CTk."""
+    icon_path = get_app_icon_path()
+    if icon_path:
+        try:
+            win.iconbitmap(icon_path)
+        except Exception:
+            pass
 
 
 def load_themed_icon(path, size=(24, 24)) -> Optional[ctk.CTkImage]:
-    """Charge un PNG et remplace les pixels sombres par une teinte claire (thème sombre)."""
+    """Charge un PNG et remplace les pixels sombres par une teinte adaptée au thème."""
     try:
+        # Teinte claire sur fond sombre, foncée sur fond clair
+        try:
+            dark_mode = ctk.get_appearance_mode() != "Light"
+        except Exception:
+            dark_mode = True
+        tint = (230, 230, 230) if dark_mode else (45, 45, 45)
         img = PILImage.open(path).convert("RGBA")
         px = img.load()
         for y in range(img.height):
             for x in range(img.width):
                 r, g, b, a = px[x, y]
                 if a > 40 and r < 100 and g < 100 and b < 100:
-                    px[x, y] = (230, 230, 230, a)
+                    px[x, y] = (*tint, a)
         return ctk.CTkImage(img, size=size)
     except Exception:
         return None
 
 
-def _fmt_bytes(n: Optional[int]) -> str:
-    if n is None:
-        return "-"
-    if n <= 0:
-        return "0 B"
-    units = ["B", "KB", "MB", "GB", "TB"]
-    i = min(int(math.log(n, 1024)), len(units) - 1)
-    v = n / (1024**i)
-    return f"{v:.1f} {units[i]}"
-
-
-def _fmt_eta(seconds: Optional[int]) -> str:
-    if seconds is None:
-        return "-"
-    m, s = divmod(max(0, int(seconds)), 60)
-    h, m = divmod(m, 60)
-    if h:
-        return f"{h:d}:{m:02d}:{s:02d}"
-    return f"{m:d}:{s:02d}"
-
-
-def _fmt_speed(n: Optional[float]) -> str:
-    if n is None:
-        return "-"
-    if n <= 0:
-        return "0 B/s"
-    units = ["B/s", "KB/s", "MB/s", "GB/s"]
-    i = 0
-    v = float(n)
-    while v >= 1024.0 and i < len(units) - 1:
-        v /= 1024.0
-        i += 1
-    return f"{v:.2f} {units[i]}"
+# Palette harmonisée pour les cartes (clair, sombre) — contraste subtil avec le fond
+CARD_FG_COLOR = ("gray90", "gray20")
+CARD_BORDER_COLOR = ("gray75", "gray32")
 
 
 class CardsBox(ctk.CTkFrame):
@@ -79,7 +102,8 @@ class DownloadCardModel:
 
 class DownloadCard(ctk.CTkFrame):
     def __init__(self, model: DownloadCardModel, parent=None) -> None:
-        super().__init__(parent, corner_radius=10, border_width=1)
+        super().__init__(parent, corner_radius=10, border_width=1,
+                         fg_color=CARD_FG_COLOR, border_color=CARD_BORDER_COLOR)
         self.model = model
 
         default_path = Path(__file__).resolve().parent / "ressources"
@@ -121,10 +145,11 @@ class DownloadCard(ctk.CTkFrame):
 
         self.progress = ctk.CTkProgressBar(right, height=10)
         self.progress.pack(fill="x", pady=(4, 0))
-        self.progress.set(0)
+        # Démarre en mode indéterminé : animation pendant la récupération des infos
+        self._progress_mode = "indeterminate"
+        self.progress.configure(mode="indeterminate")
+        self.progress.start()
         
-        # Variables pour l'animation du post-traitement
-        self._post_processing_animation = None
         self._is_post_processing = False
         
         # Conteneur pour les boutons de contrôle
@@ -139,13 +164,31 @@ class DownloadCard(ctk.CTkFrame):
         self.stop = ctk.CTkButton(controls_box, text="", image=self._stop, width=36, height=36, command=self.on_stop)
         self.stop.pack(pady=4)
         
-        self.post_processing_anim = ctk.CTkLabel(controls_box, text="⏳", font=("CTkFont", 16))
-        self.post_processing_anim.pack(pady=4)
-        self.post_processing_anim.pack_forget()  # Hide initially
-        
         self.task_id = model.task_id
         self.app = None  # Sera défini par l'application
         self.is_paused = False
+        self._ctk_thumb = None   # Référence forte vers le CTkImage (évite le GC)
+        self._thumbnail_url = None
+
+    def set_thumbnail(self, ctk_image, source_url: str = None) -> None:
+        """Affiche la vraie miniature (la barre de progression continue par-dessus)."""
+        self._ctk_thumb = ctk_image  # garder une référence forte
+        if source_url:
+            self._thumbnail_url = source_url
+        self.thumb.configure(image=ctk_image, text="")
+
+    def _set_progress_mode(self, mode: str) -> None:
+        """Bascule la barre de progression entre indéterminée et déterminée."""
+        if mode == self._progress_mode:
+            return
+        try:
+            self.progress.stop()
+        except Exception:
+            pass
+        self.progress.configure(mode=mode)
+        if mode == "indeterminate":
+            self.progress.start()
+        self._progress_mode = mode
 
     def update_progress(
         self,
@@ -161,8 +204,14 @@ class DownloadCard(ctk.CTkFrame):
         duration: Optional[int] = None,
         uploader: Optional[str] = None,
     ) -> None:
-        self.progress.set(max(0.0, min(1.0, percent)))
-        self.percent_label.configure(text=f"{int(self.progress.get() * 100)}%")
+        # Barre unique : indéterminée pendant la récupération des infos et le
+        # post-traitement, déterminée pendant le téléchargement
+        if status in ("preparing", "post_processing"):
+            self._set_progress_mode("indeterminate")
+        else:
+            self._set_progress_mode("determinate")
+            self.progress.set(max(0.0, min(1.0, percent)))
+        self.percent_label.configure(text=f"{int(max(0.0, min(1.0, percent)) * 100)}%")
         
         # Adapter l'affichage pour les playlists
         if item_number and total_items:
@@ -195,18 +244,13 @@ class DownloadCard(ctk.CTkFrame):
             self.status_label.configure(text=_("Preparing"))
         elif status == "post_processing":
             self.status_label.configure(text=_("Post-processing..."))
-            # Démarrer l'animation de la barre de progression
-            if not self._is_post_processing:
-                self._is_post_processing = True
-                self._start_post_processing_animation()
+            self._is_post_processing = True
         else:
-            # Arrêter l'animation si on n'est plus en post-traitement
-            if self._is_post_processing:
-                self._is_post_processing = False
-                self._stop_post_processing_animation()
+            self._is_post_processing = False
             self.status_label.configure(text=status)
 
     def mark_error(self, message: str) -> None:
+        self._set_progress_mode("determinate")
         self.status_label.configure(text=f"{_('Error')}: {message}")
         
     def on_pause(self) -> None:
@@ -238,11 +282,16 @@ class DownloadCard(ctk.CTkFrame):
                 self.status_label.configure(text=_("Stop downloading"))
                 
                 # Arrêter le téléchargement via le manager
+                # (enregistre l'ID même si la tâche est encore en phase de détection)
                 self.app.manager.cancel_download(self.task_id)
                 
+                # Retirer la tâche de la barre de progression globale
+                if hasattr(self.app, '_active_downloads'):
+                    self.app._active_downloads.pop(self.task_id, None)
+                    if hasattr(self.app, '_update_global_progress'):
+                        self.app._update_global_progress()
+                
                 # Supprimer la carte après un court délai
-                import threading
-                import time
                 
                 def remove_card():
                     # Attendre un peu pour que l'annulation prenne effet
@@ -255,6 +304,10 @@ class DownloadCard(ctk.CTkFrame):
                         if self.app and hasattr(self.app, '_cards') and hasattr(self.app, 'cards_box'):
                             try:
                                 self.app._cards.pop(self.task_id, None)
+                                if hasattr(self.app, '_active_downloads'):
+                                    self.app._active_downloads.pop(self.task_id, None)
+                                    if hasattr(self.app, '_update_global_progress'):
+                                        self.app._update_global_progress()
                                 self.destroy()
                                 if hasattr(self.app, 'downloads_view') and self.app.downloads_view:
                                     self.app.downloads_view.log_info(f"{_('Cart')} {self.task_id} {_('removed')}")
@@ -263,7 +316,10 @@ class DownloadCard(ctk.CTkFrame):
                                     self.app.downloads_view.log_error(f"{_('Error')} {_('removing card')}: {e}")
 
                     try:
-                        self.app.after(0, _remove_card_ui)
+                        if hasattr(self.app, 'dispatch_ui'):
+                            self.app.dispatch_ui(_remove_card_ui)
+                        else:
+                            self.app.after(0, _remove_card_ui)
                     except Exception as e:
                         # Log the error but don't break the card removal process
                         if hasattr(self.app, 'downloads_view') and self.app.downloads_view:
@@ -282,26 +338,10 @@ class DownloadCard(ctk.CTkFrame):
         """Définit la référence à l'application principale"""
         self.app = app
 
-    def _start_post_processing_animation(self) -> None:
-        """Démarre l'animation de la barre de progression pour le post-traitement"""
-        if self._is_post_processing:
-            return
-        
-        self._is_post_processing = True
-        self._post_processing_animation = True
-        self.post_processing_anim.pack()  # Show the animation label
-    
-    def _stop_post_processing_animation(self) -> None:
-        """Arrête l'animation de post-traitement"""
-        self._is_post_processing = False
-        self._post_processing_animation = None
-        # Remettre la barre à 100% quand le post-traitement est terminé
-        self.post_processing_anim.pack_forget()  # Hide the animation label
-
-
 class FinishedDownloadCard(ctk.CTkFrame):
     def __init__(self, *, title: str, size_text: str, file_path: Optional[Path] = None, parent=None) -> None:
-        super().__init__(parent, corner_radius=10, border_width=1)
+        super().__init__(parent, corner_radius=10, border_width=1,
+                         fg_color=CARD_FG_COLOR, border_color=CARD_BORDER_COLOR)
         
         default_path = Path(__file__).resolve().parent / "ressources"
         folder_path = default_path / "pictures"
@@ -317,6 +357,7 @@ class FinishedDownloadCard(ctk.CTkFrame):
             pass
 
         folder_icon = load_themed_icon(folder_path / "folder-open-24.png")
+        self._ctk_thumb = None  # Référence forte vers le CTkImage
 
         self.thumb = ctk.CTkLabel(self, image=self._default_image, text="", width=120, height=68)
         self.thumb.grid(row=0, column=0, padx=8, pady=8)
@@ -352,9 +393,6 @@ class FinishedDownloadCard(ctk.CTkFrame):
         """Ouvre le dossier de destination dans l'explorateur système"""
         if self.file_path and self.file_path.exists():
             try:
-                import os
-                import subprocess
-                import platform
                 
                 system = platform.system()
                 
@@ -385,7 +423,6 @@ class FinishedDownloadCard(ctk.CTkFrame):
                             break
                         except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired) as e:
                             # Log the specific error for debugging
-                            import logging
                             logging.getLogger(__name__).debug(f"File manager {fm} failed: {e}")
                             continue
                     
@@ -401,7 +438,6 @@ class FinishedDownloadCard(ctk.CTkFrame):
                     if not success:
                         try:
                             # Utiliser python-magic pour détecter le type ou fallback simple
-                            import webbrowser
                             webbrowser.open(f"file://{self.file_path}")
                             success = True
                         except Exception:

@@ -10,7 +10,7 @@ import customtkinter as ctk
 from PIL import Image as PILImage
 
 from ..i18n import _
-from ..widgets import CardsBox
+from ..widgets import CardsBox, apply_window_icon
 
 
 class _ProcessAnimation(ctk.CTkLabel):
@@ -48,6 +48,7 @@ class DownloadsView:
         self._log_lock = threading.Lock()
         self._terminal_window: Optional[ctk.CTkToplevel] = None
         self._terminal_text: Optional[ctk.CTkTextbox] = None
+        self._terminal_offset = 0
 
         # Create main widget
         self.widget = ctk.CTkFrame(app.content)
@@ -57,6 +58,7 @@ class DownloadsView:
         top_frame.pack(fill="x", padx=5, pady=5)
         
         self.url_input = ctk.CTkEntry(top_frame, placeholder_text=_("URL ..."))
+        self.url_input.bind("<Return>", lambda e: self.app._on_add())
         self.url_input.pack(side="left", fill="x", expand=True, padx=5)
         
         # Valeurs d'affichage localisées, mappées sur des codes stables ("video"/"audio")
@@ -96,6 +98,14 @@ class DownloadsView:
         )
         terminal_btn.pack(side="left", padx=5)
 
+        # Barre de progression globale (toutes les tâches actives)
+        self.global_frame = ctk.CTkFrame(self.widget, height=26)
+        self.global_bar = ctk.CTkProgressBar(self.global_frame, height=8)
+        self.global_bar.pack(side="left", fill="x", expand=True, padx=5, pady=4)
+        self.global_label = ctk.CTkLabel(self.global_frame, text="", font=("CTkFont", 11))
+        self.global_label.pack(side="right", padx=8)
+        # Masquée par défaut (pack seulement quand des téléchargements sont actifs)
+
         # Scrollable area containing either the cards or the default image
         scroller = ctk.CTkScrollableFrame(self.widget)
         scroller.pack(fill="both", expand=True, padx=5, pady=5)
@@ -124,6 +134,7 @@ class DownloadsView:
         """Affiche la fenêtre de terminal avec la sortie en temps réel"""
         if self._terminal_window is None or not self._terminal_window.winfo_exists():
             self._terminal_window = ctk.CTkToplevel(self.widget)
+            apply_window_icon(self._terminal_window)
             self._terminal_window.title(_("Terminal - Real-time output"))
             self._terminal_window.geometry("850x650")
             
@@ -133,8 +144,12 @@ class DownloadsView:
             # Afficher le contenu actuel du buffer
             with self._log_lock:
                 current_content = self._log_buffer.getvalue()
+                self._terminal_offset = len(current_content)
                 if current_content:
                     self._terminal_text.insert("1.0", current_content)
+            
+            # Rafraîchissement automatique toutes les 500 ms
+            self._terminal_text.after(500, self._poll_terminal)
             
             # Boutons de contrôle
             button_frame = ctk.CTkFrame(self._terminal_window)
@@ -151,17 +166,41 @@ class DownloadsView:
     
     def _refresh_terminal(self) -> None:
         """Rafraîchit manuellement le contenu du terminal"""
-        if self._terminal_text:
+        self._terminal_offset = 0
+        self._sync_terminal()
+    
+    def _poll_terminal(self) -> None:
+        """Polling périodique : ajoute au terminal uniquement les nouvelles lignes."""
+        if self._terminal_text is None or not self._terminal_text.winfo_exists():
+            return
+        self._sync_terminal()
+        self._terminal_text.after(500, self._poll_terminal)
+    
+    def _sync_terminal(self) -> None:
+        """Synchronise le textbox avec le buffer (append incrémental)."""
+        if not self._terminal_text:
+            return
+        try:
             with self._log_lock:
-                current_content = self._log_buffer.getvalue()
+                content = self._log_buffer.getvalue()
+            if len(content) < self._terminal_offset:
+                # Buffer tronqué : réécriture complète
                 self._terminal_text.delete("1.0", "end")
-                self._terminal_text.insert("1.0", current_content)
+                self._terminal_text.insert("1.0", content)
+                self._terminal_offset = len(content)
+            elif len(content) > self._terminal_offset:
+                self._terminal_text.insert("end", content[self._terminal_offset:])
+                self._terminal_offset = len(content)
+            self._terminal_text.see("end")
+        except Exception:
+            pass
     
     def _clear_terminal(self) -> None:
         """Efface le contenu du terminal"""
         with self._log_lock:
             self._log_buffer.seek(0)
             self._log_buffer.truncate(0)
+        self._terminal_offset = 0
         
         if self._terminal_text:
             self._terminal_text.delete("1.0", "end")
@@ -173,6 +212,39 @@ class DownloadsView:
             self._terminal_window = None
             self._terminal_text = None
     
+    def set_global_progress(self, percent: Optional[float], text: str) -> None:
+        """Affiche/met à jour la barre globale. percent=None → mode indéterminé."""
+        if self.global_frame is None or not self.global_frame.winfo_exists():
+            return
+        if percent is None:
+            try:
+                self.global_bar.stop()
+            except Exception:
+                pass
+            self.global_bar.configure(mode="indeterminate")
+            self.global_bar.start()
+        else:
+            try:
+                self.global_bar.stop()
+            except Exception:
+                pass
+            self.global_bar.configure(mode="determinate")
+            self.global_bar.set(max(0.0, min(1.0, float(percent))))
+        self.global_label.configure(text=text)
+        if not self.global_frame.winfo_ismapped():
+            self.global_frame.pack(fill="x", padx=5, pady=(0, 2))
+
+    def hide_global_progress(self) -> None:
+        """Masque la barre globale quand plus aucune tâche n'est active."""
+        if self.global_frame is None:
+            return
+        try:
+            self.global_bar.stop()
+        except Exception:
+            pass
+        if self.global_frame.winfo_ismapped():
+            self.global_frame.pack_forget()
+
     def _update_content_display(self) -> None:
         """Met à jour l'affichage en fonction du nombre de cartes"""
         # Vérifier si des cartes sont présentes
@@ -191,19 +263,20 @@ class DownloadsView:
     def log_message(self, message: str) -> None:
         """Ajoute un message au buffer de log"""
         timestamp = time.strftime("%H:%M:%S")
+        line = f"[{timestamp}] {message}\n"
         with self._log_lock:
-            self._log_buffer.write(f"[{timestamp}] {message}\n")
-            
-            # Limiter la taille du buffer pour éviter les problèmes de performance
-            # Garder seulement les 1000 dernières lignes
-            content = self._log_buffer.getvalue()
-            lines = content.split('\n')
-            if len(lines) > 1000:
-                # Garder les 500 dernières lignes pour avoir de la marge
-                truncated_content = '\n'.join(lines[-500:])
-                self._log_buffer.seek(0)
-                self._log_buffer.truncate(0)
-                self._log_buffer.write(truncated_content)
+            pos = self._log_buffer.tell()
+            self._log_buffer.write(line)
+            # Tronquer seulement quand le buffer dépasse ~200 KB (évite un getvalue()
+            # complet à chaque ligne — yt-dlp produit des centaines de lignes/sec)
+            if pos > 200_000:
+                content = self._log_buffer.getvalue()
+                lines = content.split('\n')
+                if len(lines) > 1000:
+                    truncated_content = '\n'.join(lines[-500:])
+                    self._log_buffer.seek(0)
+                    self._log_buffer.truncate(0)
+                    self._log_buffer.write(truncated_content)
     
     def log_debug(self, message: str) -> None:
         """Ajoute un message de debug au buffer de log"""

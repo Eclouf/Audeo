@@ -4,6 +4,8 @@ import os
 import json
 import subprocess
 from pathlib import Path
+from tkinter import filedialog
+from urllib.parse import urlparse
 
 import customtkinter as ctk
 from PIL import Image as PILImage
@@ -98,6 +100,21 @@ description:(Vol\\.\\s+(?P<volume>[^\\n]+))
         lang_select.set(current_lang_label)
         lang_select.pack(side="left", padx=5)
         
+        # Sélecteur de thème (paramètre d'interface, pas de téléchargement)
+        self._theme_display_to_mode = {_("Dark"): "dark", _("Light"): "light", _("System"): "system"}
+        current_theme = self.app.settings.general.theme or "dark"
+        current_theme_label = next((label for label, mode in self._theme_display_to_mode.items() if mode == current_theme), _("Dark"))
+        self.theme_select = ctk.CTkOptionMenu(
+            top_bar,
+            values=list(self._theme_display_to_mode.keys()),
+            command=self._on_theme_change,
+            width=110,
+            height=30,
+            font=("CTkFont", 12),
+        )
+        self.theme_select.set(current_theme_label)
+        self.theme_select.pack(side="left", padx=5)
+        
         apply_all_btn = ctk.CTkButton(top_bar, text=_("Apply all"), command=self._apply_all, width=100, height=30)
         apply_all_btn.pack(side="right", padx=5)
         
@@ -158,6 +175,22 @@ description:(Vol\\.\\s+(?P<volume>[^\\n]+))
             _("Language changed to {} ({})").format(lang_name, lang_code)
         )
     
+    def _on_theme_change(self, choice) -> None:
+        """Applique le thème immédiatement (sans attendre Apply all)."""
+        mode = self._theme_display_to_mode.get(str(choice), "dark")
+        try:
+            self.app.settings.general.theme = mode
+            ctk.set_appearance_mode(mode)
+            self.app.save_settings()
+        except Exception:
+            pass
+        # Recharger les vues pour re-teinter les icônes selon le nouveau thème
+        # (différé : la vue Settings courante est détruite par la reconstruction)
+        try:
+            self.app.after(100, self.app.notify_language_change)
+        except Exception:
+            pass
+
     def on_language_changed(self) -> None:
         """Méthode appelée quand la langue change"""
         self._update_ui_language()
@@ -284,6 +317,15 @@ description:(Vol\\.\\s+(?P<volume>[^\\n]+))
         self.fragments_input.insert(0, str(max(1, g.concurrent_fragments)))
         self.fragments_input.pack(side="right", padx=5)
         
+        # Max simultaneous downloads
+        maxworkers_frame = ctk.CTkFrame(container, height=40)
+        maxworkers_frame.pack(fill="x", pady=5)
+        self._add_icon(maxworkers_frame, self._fragments_icon)
+        ctk.CTkLabel(maxworkers_frame, text=_("Max simultaneous downloads"), font=("CTkFont", 12)).pack(side="left", padx=5)
+        self.max_workers_input = ctk.CTkEntry(maxworkers_frame, width=150, height=30, font=("CTkFont", 12))
+        self.max_workers_input.insert(0, str(max(1, min(8, getattr(g, "max_workers", 3) or 3))))
+        self.max_workers_input.pack(side="right", padx=5)
+        
         # Add thumbnail switch
         thumbnail_frame = ctk.CTkFrame(container, height=40)
         thumbnail_frame.pack(fill="x", pady=5)
@@ -340,7 +382,6 @@ description:(Vol\\.\\s+(?P<volume>[^\\n]+))
 
     def _choose_destination(self):
         try:
-            from tkinter import filedialog
             folder = filedialog.askdirectory(title=_("Choose destination folder"))
         except Exception:
             folder = None
@@ -391,6 +432,31 @@ description:(Vol\\.\\s+(?P<volume>[^\\n]+))
         
         g.proxy_id = (self.proxy_id_input.get() or "").strip()
         g.proxy_pw = (self.proxy_pw_input.get() or "").strip()
+
+        theme_display = str(self.theme_select.get() or "")
+        g.theme = self._theme_display_to_mode.get(theme_display, "dark")
+        try:
+            ctk.set_appearance_mode(g.theme)
+        except Exception:
+            pass
+
+        try:
+            g.max_workers = max(1, min(8, int(self.max_workers_input.get() or 3)))
+        except (TypeError, ValueError):
+            g.max_workers = 3
+        self.max_workers_input.delete(0, 'end')
+        self.max_workers_input.insert(0, str(g.max_workers))
+        # Appliquer aux prochains téléchargements ; recréer le manager si idle
+        # (un ThreadPoolExecutor ne peut pas être redimensionné)
+        self.app.max_workers = g.max_workers
+        try:
+            if (hasattr(self.app, "_active_downloads") and not self.app._active_downloads
+                    and hasattr(self.app, "_build_manager")):
+                self.app.manager.shutdown()
+                self.app.manager = self.app._build_manager()
+        except Exception:
+            pass
+
         self.app.save_settings()
 
     def _is_valid_proxy_url(self, url: str) -> bool:
@@ -398,7 +464,6 @@ description:(Vol\\.\\s+(?P<volume>[^\\n]+))
         if not url:
             return True  # Empty is valid (no proxy)
         try:
-            from urllib.parse import urlparse
             parsed = urlparse(url)
             # Must have scheme http or https
             if parsed.scheme not in ("http", "https"):
@@ -608,7 +673,6 @@ description:(Vol\\.\\s+(?P<volume>[^\\n]+))
     def _import(self) -> None:
         """Importe les paramètres depuis un fichier JSON"""
         try:
-            from tkinter import filedialog
             file_path = filedialog.askopenfilename(
                 title=_("Import settings"),
                 filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
@@ -702,6 +766,8 @@ description:(Vol\\.\\s+(?P<volume>[^\\n]+))
                 self._set_entry(self.limit_rate_input, g.limit_rate_kib_s)
             if hasattr(self, 'fragments_input'):
                 self._set_entry(self.fragments_input, g.concurrent_fragments)
+            if hasattr(self, 'max_workers_input'):
+                self._set_entry(self.max_workers_input, getattr(g, 'max_workers', 3))
             if hasattr(self, 'playlist_folder_input'):
                 self._set_entry(self.playlist_folder_input, g.playlist_folder_name)
             if hasattr(self, 'proxy_url_input'):
@@ -710,6 +776,10 @@ description:(Vol\\.\\s+(?P<volume>[^\\n]+))
                 self._set_entry(self.proxy_id_input, g.proxy_id)
             if hasattr(self, 'proxy_pw_input'):
                 self._set_entry(self.proxy_pw_input, g.proxy_pw)
+            if hasattr(self, 'theme_select') and hasattr(self, '_theme_display_to_mode'):
+                current_theme = g.theme or "dark"
+                theme_label = next((label for label, mode in self._theme_display_to_mode.items() if mode == current_theme), _("Dark"))
+                self.theme_select.set(theme_label)
 
             if hasattr(self, 'custom_metadata_input'):
                 self._set_textbox(self.custom_metadata_input, g.custom_metadata)
@@ -741,7 +811,6 @@ description:(Vol\\.\\s+(?P<volume>[^\\n]+))
     def _export(self) -> None:
         """Exporte les paramètres actuels dans un fichier JSON"""
         try:
-            from tkinter import filedialog
             file_path = filedialog.asksaveasfilename(
                 title=_("Export settings"),
                 defaultextension=".json",
@@ -771,7 +840,9 @@ description:(Vol\\.\\s+(?P<volume>[^\\n]+))
                     "playlist_folder_name": self.app.settings.general.playlist_folder_name,
                     "proxy_url": self.app.settings.general.proxy_url,
                     "proxy_id": self.app.settings.general.proxy_id,
-                    "proxy_pw": self.app.settings.general.proxy_pw
+                    "proxy_pw": self.app.settings.general.proxy_pw,
+                    "theme": self.app.settings.general.theme,
+                    "max_workers": self.app.settings.general.max_workers
                 },
                 "video": {
                     "preferred_codec": self.app.settings.video.preferred_codec,

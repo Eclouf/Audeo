@@ -43,3 +43,4 @@ class DownloadTask:
     cancelled: bool = field(default=False)  # État d'annulation
     paused: bool = field(default=False)  # État de pause
     playlist: bool = field(default=False)  # Indique si c'est une tâche de playlist
+    filepaths: list = field(default_factory=list)  # Fichiers produits (hook finished yt-dlp)

@@ -183,12 +183,11 @@ class OptionsFormatter:
         return ydl_opts, info
         
     def _convert_multiple_fields(self, output_template: str) -> str:
-        if ", " in output_template:
-            # Convertir %(champ1,champ2)s en %(champ1)s - %(champ2)s ou %(champ1)s_%(champ2)s
-            import re
+        if "," in output_template:
+            # Convertir %(champ1,champ2)s ou %(champ1, champ2)s en %(champ1)s - %(champ2)s
             original_template = output_template
             def convert_multiple_fields(match):
-                fields = match.group(1).split(", ")
+                fields = [f.strip() for f in match.group(1).split(",")]
                 if len(fields) == 2:
                     return f"%({fields[0]})s - %({fields[1]})s"
                 else:
